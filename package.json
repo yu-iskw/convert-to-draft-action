@@ -1,0 +1,16 @@
+{
+  "name": "check-pr-workflows",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "ncc build src/index.js --license LICENSES -o dist"
+  },
+  "dependencies": {
+    "@actions/core": "^1.10.1",
+    "@actions/github": "^5.1.1",
+    "node-fetch": "^2.6.7"
+  },
+  "devDependencies": {
+    "@vercel/ncc": "^0.33.4"
+  }
+}
