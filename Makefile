@@ -7,5 +7,8 @@ build: clean
 lint:
 	trunk check -a
 
+format:
+	trunk fmt -a
+
 clean:
 	rm -fr dist/*.js
