@@ -38927,10 +38927,11 @@ ${pendingInterceptorsFormatter.format(pending)}
         const token = (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput)(
           "GITHUB_TOKEN",
         );
-        const { context } =
-          _actions_github__WEBPACK_IMPORTED_MODULE_1___default();
-        const { number: prNumber } = context.payload.pull_request || {};
-        const { owner, repo } = context.repo;
+        const { number: prNumber } =
+          _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.payload
+            .pull_request || {};
+        const { owner, repo } =
+          _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.repo;
 
         (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
           `PR Number: ${prNumber}`,

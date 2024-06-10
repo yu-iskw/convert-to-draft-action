@@ -13,13 +13,12 @@
 // limitations under the License.
 
 import { getInput, info, setFailed } from "@actions/core";
-import github from "@actions/github";
+import { context } from "@actions/github";
 import fetch from "node-fetch";
 
 async function run() {
   try {
     const token = getInput("GITHUB_TOKEN");
-    const { context } = github;
     const { number: prNumber } = context.payload.pull_request || {};
     const { owner, repo } = context.repo;
 
