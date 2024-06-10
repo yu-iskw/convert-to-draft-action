@@ -38854,7 +38854,6 @@ ${pendingInterceptorsFormatter.format(pending)}
         const owner = context.repo.owner;
         const repo = context.repo.repo;
 
-        core.info(`Context: ${JSON.stringify(context, null, 2)}`);
         core.info(`PR Number: ${prNumber}`);
         core.info(`Owner: ${owner}`);
         core.info(`Repo: ${repo}`);
@@ -38902,6 +38901,7 @@ ${pendingInterceptorsFormatter.format(pending)}
           core.info(
             "Some workflows failed or are still running. Converting PR to draft...",
           );
+          core.info(`Workflows: ${JSON.stringify(runs, null, 2)}`);
           const updateResult = await fetch(
             `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}`,
             {
@@ -38916,6 +38916,12 @@ ${pendingInterceptorsFormatter.format(pending)}
           );
 
           core.info(`Update result status: ${updateResult.status}`);
+          core.info(`Update result status text: ${updateResult.statusText}`);
+          core.info(
+            `Update result headers: ${JSON.stringify(updateResult.headers.raw(), null, 2)}`,
+          );
+          const updateResultBody = await updateResult.text();
+          core.info(`Update result body: ${updateResultBody}`);
 
           if (!updateResult.ok) {
             throw new Error(
