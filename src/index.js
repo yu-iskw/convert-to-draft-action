@@ -57,15 +57,17 @@ async function run() {
     }
 
     const runs = data.workflow_runs.filter(
-      (run) =>
-        run.pull_requests.some((pr) => pr.number === prNumber) &&
-        run.conclusion !== null, // Ensure only completed workflows are considered
+      (run) => run.pull_requests.some((pr) => pr.number === prNumber)
     );
 
     core.info(`Filtered runs: ${JSON.stringify(runs, null, 2)}`);
 
-    if (runs.some((run) => run.conclusion !== "success")) {
-      core.info("Some workflows failed. Converting PR to draft...");
+    const hasFailedOrRunningWorkflows = runs.some(
+      (run) => run.conclusion !== "success" || run.conclusion === null
+    );
+
+    if (hasFailedOrRunningWorkflows) {
+      core.info("Some workflows failed or are still running. Converting PR to draft...");
       const updateResult = await fetch(
         `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}`,
         {
@@ -83,7 +85,7 @@ async function run() {
 
       if (!updateResult.ok) {
         throw new Error(
-          `Failed to update pull request: ${updateResult.statusText}`,
+          `Failed to update pull request: ${updateResult.statusText}`
         );
       }
     } else {
