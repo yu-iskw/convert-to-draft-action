@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-name: Check PR Workflows
+name: Convert PR to Draft
 description: Convert a PR to a draft if any workflows fail
 inputs:
   GITHUB_TOKEN:
