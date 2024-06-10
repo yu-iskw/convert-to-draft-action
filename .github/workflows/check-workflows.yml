@@ -25,6 +25,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
       - name: Run custom action
-        uses: "../"
+        uses: "./"
         with:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
