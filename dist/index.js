@@ -33765,6 +33765,12 @@ async function run() {
     const owner = context.repo.owner;
     const repo = context.repo.repo;
 
+    core.debug(`Token: ${token}`);
+    core.debug(`Context: ${JSON.stringify(context, null, 2)}`);
+    core.debug(`PR Number: ${prNumber}`);
+    core.debug(`Owner: ${owner}`);
+    core.debug(`Repo: ${repo}`);
+
     if (!prNumber) {
       throw new Error('Pull request number is undefined');
     }
@@ -33776,11 +33782,15 @@ async function run() {
       },
     });
 
+    core.debug(`Fetch result status: ${result.status}`);
+
     if (!result.ok) {
       throw new Error(`Failed to fetch workflow runs: ${result.statusText}`);
     }
 
     const data = await result.json();
+    core.debug(`Workflow runs data: ${JSON.stringify(data, null, 2)}`);
+
     if (!data.workflow_runs) {
       throw new Error('workflow_runs is undefined');
     }
@@ -33789,6 +33799,8 @@ async function run() {
       run.pull_requests.some(pr => pr.number === prNumber) &&
       run.conclusion !== null // Ensure only completed workflows are considered
     );
+
+    core.debug(`Filtered runs: ${JSON.stringify(runs, null, 2)}`);
 
     if (runs.some(run => run.conclusion !== 'success')) {
       core.info('Some workflows failed. Converting PR to draft...');
@@ -33801,6 +33813,8 @@ async function run() {
         },
         body: JSON.stringify({ draft: true }),
       });
+
+      core.debug(`Update result status: ${updateResult.status}`);
 
       if (!updateResult.ok) {
         throw new Error(`Failed to update pull request: ${updateResult.statusText}`);
