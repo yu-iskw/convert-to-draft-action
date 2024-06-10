@@ -1,7 +1,9 @@
 install:
 	npm install --include=dev --verbose
 
-build: clean
+build: clean build-npm format
+
+build-npm:
 	npm run build
 
 lint:
@@ -11,4 +13,4 @@ format:
 	trunk fmt -a
 
 clean:
-	rm -fr dist/*.js
+	rm -rf dist/*.js
