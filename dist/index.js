@@ -38849,10 +38849,9 @@ ${pendingInterceptorsFormatter.format(pending)}
     async function run() {
       try {
         const token = core.getInput("GITHUB_TOKEN");
-        const context = github.context;
-        const prNumber = context.payload.pull_request?.number;
-        const owner = context.repo.owner;
-        const repo = context.repo.repo;
+        const { context } = github;
+        const { number: prNumber } = context.payload.pull_request || {};
+        const { owner, repo } = context.repo;
 
         core.info(`PR Number: ${prNumber}`);
         core.info(`Owner: ${owner}`);
@@ -38862,77 +38861,146 @@ ${pendingInterceptorsFormatter.format(pending)}
           throw new Error("Pull request number is undefined");
         }
 
-        const result = await fetch(
-          `https://api.github.com/repos/${owner}/${repo}/actions/runs?event=pull_request`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              Accept: "application/vnd.github.v3+json",
-            },
-          },
-        );
+        const workflowRuns = await fetchWorkflowRuns(token, owner, repo);
+        const runs = filterWorkflowRuns(workflowRuns, prNumber);
 
-        core.info(`Fetch result status: ${result.status}`);
-
-        if (!result.ok) {
-          throw new Error(
-            `Failed to fetch workflow runs: ${result.statusText}`,
-          );
-        }
-
-        const data = await result.json();
-        core.info(`Workflow runs data: ${JSON.stringify(data, null, 2)}`);
-
-        if (!data.workflow_runs) {
-          throw new Error("workflow_runs is undefined");
-        }
-
-        const runs = data.workflow_runs.filter((run) =>
-          run.pull_requests.some((pr) => pr.number === prNumber),
-        );
-
-        core.info(`Filtered runs: ${JSON.stringify(runs, null, 2)}`);
-
-        const hasFailedOrRunningWorkflows = runs.some(
-          (run) => run.conclusion !== "success" || run.conclusion === null,
-        );
-
-        if (hasFailedOrRunningWorkflows) {
-          core.info(
-            "Some workflows failed or are still running. Converting PR to draft...",
-          );
-          core.info(`Workflows: ${JSON.stringify(runs, null, 2)}`);
-          const updateResult = await fetch(
-            `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}`,
-            {
-              method: "PATCH",
-              headers: {
-                Authorization: `Bearer ${token}`,
-                "Content-Type": "application/json",
-                Accept: "application/vnd.github.v3+json",
-              },
-              body: JSON.stringify({ draft: true }),
-            },
-          );
-
-          core.info(`Update result status: ${updateResult.status}`);
-          core.info(`Update result status text: ${updateResult.statusText}`);
-          core.info(
-            `Update result headers: ${JSON.stringify(updateResult.headers.raw(), null, 2)}`,
-          );
-          const updateResultBody = await updateResult.text();
-          core.info(`Update result body: ${updateResultBody}`);
-
-          if (!updateResult.ok) {
-            throw new Error(
-              `Failed to update pull request: ${updateResult.statusText}`,
-            );
-          }
+        if (hasFailedOrRunningWorkflows(runs)) {
+          await convertPrToDraft(token, owner, repo, prNumber);
+          await leaveCommentIfDraft(token, owner, repo, prNumber);
         } else {
           core.info("All workflows passed.");
         }
       } catch (error) {
         core.setFailed(error.message);
+      }
+    }
+
+    async function fetchWorkflowRuns(token, owner, repo) {
+      const response = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}/actions/runs?event=pull_request`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/vnd.github.v3+json",
+          },
+        },
+      );
+
+      core.info(`Fetch result status: ${response.status}`);
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to fetch workflow runs: ${response.statusText}`,
+        );
+      }
+
+      const data = await response.json();
+      core.info(`Workflow runs data: ${JSON.stringify(data, null, 2)}`);
+
+      if (!data.workflow_runs) {
+        throw new Error("workflow_runs is undefined");
+      }
+
+      return data.workflow_runs;
+    }
+
+    function filterWorkflowRuns(workflowRuns, prNumber) {
+      const runs = workflowRuns.filter((run) =>
+        run.pull_requests.some((pr) => pr.number === prNumber),
+      );
+
+      core.info(`Filtered runs: ${JSON.stringify(runs, null, 2)}`);
+      return runs;
+    }
+
+    function hasFailedOrRunningWorkflows(runs) {
+      return runs.some(
+        (run) => run.conclusion !== "success" || run.conclusion === null,
+      );
+    }
+
+    async function convertPrToDraft(token, owner, repo, prNumber) {
+      core.info(
+        "Some workflows failed or are still running. Converting PR to draft...",
+      );
+
+      const response = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+            Accept: "application/vnd.github.v3+json",
+          },
+          body: JSON.stringify({ draft: true }),
+        },
+      );
+
+      core.info(`Update result status: ${response.status}`);
+      core.info(`Update result status text: ${response.statusText}`);
+      core.info(
+        `Update result headers: ${JSON.stringify(response.headers.raw(), null, 2)}`,
+      );
+      const responseBody = await response.text();
+      core.info(`Update result body: ${responseBody}`);
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to update pull request: ${response.statusText}`,
+        );
+      }
+    }
+
+    async function leaveCommentIfDraft(token, owner, repo, prNumber) {
+      const prResponse = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/vnd.github.v3+json",
+          },
+        },
+      );
+
+      if (!prResponse.ok) {
+        throw new Error(
+          `Failed to fetch pull request: ${prResponse.statusText}`,
+        );
+      }
+
+      const prData = await prResponse.json();
+
+      if (prData.draft) {
+        const commentResponse = await fetch(
+          `https://api.github.com/repos/${owner}/${repo}/issues/${prNumber}/comments`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+              Accept: "application/vnd.github.v3+json",
+            },
+            body: JSON.stringify({
+              body: `
+          The pull request has been converted to a draft because some workflows failed or are still running.
+          Please get it ready to review after all workflows are passed.
+          `,
+            }),
+          },
+        );
+
+        core.info(`Comment result status: ${commentResponse.status}`);
+        core.info(`Comment result status text: ${commentResponse.statusText}`);
+
+        if (!commentResponse.ok) {
+          throw new Error(
+            `Failed to leave a comment on the pull request: ${commentResponse.statusText}`,
+          );
+        }
+      } else {
+        core.info("The pull request is not in draft status.");
       }
     }
 
