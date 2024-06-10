@@ -27,6 +27,9 @@ jobs:
   release:
     if: github.event.action != 'labeled'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
     steps:
       - uses: actions/checkout@v4
 
@@ -66,6 +69,9 @@ jobs:
   release-check:
     if: github.event.action == 'labeled'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
     steps:
       - uses: actions/checkout@v4
       - name: Post bumpr status comment
