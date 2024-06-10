@@ -107,7 +107,7 @@ async function convertPrToDraft(token, owner, repo, prNumber) {
 
   const variables = {
     input: {
-      pullRequestId: prNumber,
+      pullRequestId: await getPullRequestId(octokit, owner, repo, prNumber),
     },
   };
 
@@ -118,6 +118,20 @@ async function convertPrToDraft(token, owner, repo, prNumber) {
   }
 
   info("Pull request successfully converted to draft.");
+}
+
+async function getPullRequestId(octokit, owner, repo, prNumber) {
+  const { data: pullRequest } = await octokit.pulls.get({
+    owner,
+    repo,
+    pull_number: prNumber,
+  });
+
+  if (!pullRequest.node_id) {
+    throw new Error(`Could not resolve to a node with the global id of '${prNumber}'`);
+  }
+
+  return pullRequest.node_id;
 }
 
 async function leaveCommentIfDraft(token, owner, repo, prNumber) {
