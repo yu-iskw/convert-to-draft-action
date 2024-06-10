@@ -38819,6 +38819,66 @@ ${pendingInterceptorsFormatter.format(pending)}
   }
   /******/
   /************************************************************************/
+  /******/ /* webpack/runtime/compat get default export */
+  /******/ (() => {
+    /******/ // getDefaultExport function for compatibility with non-harmony modules
+    /******/ __nccwpck_require__.n = (module) => {
+      /******/ var getter =
+        module && module.__esModule
+          ? /******/ () => module["default"]
+          : /******/ () => module;
+      /******/ __nccwpck_require__.d(getter, { a: getter });
+      /******/ return getter;
+      /******/
+    };
+    /******/
+  })();
+  /******/
+  /******/ /* webpack/runtime/define property getters */
+  /******/ (() => {
+    /******/ // define getter functions for harmony exports
+    /******/ __nccwpck_require__.d = (exports, definition) => {
+      /******/ for (var key in definition) {
+        /******/ if (
+          __nccwpck_require__.o(definition, key) &&
+          !__nccwpck_require__.o(exports, key)
+        ) {
+          /******/ Object.defineProperty(exports, key, {
+            enumerable: true,
+            get: definition[key],
+          });
+          /******/
+        }
+        /******/
+      }
+      /******/
+    };
+    /******/
+  })();
+  /******/
+  /******/ /* webpack/runtime/hasOwnProperty shorthand */
+  /******/ (() => {
+    /******/ __nccwpck_require__.o = (obj, prop) =>
+      Object.prototype.hasOwnProperty.call(obj, prop);
+    /******/
+  })();
+  /******/
+  /******/ /* webpack/runtime/make namespace object */
+  /******/ (() => {
+    /******/ // define __esModule on exports
+    /******/ __nccwpck_require__.r = (exports) => {
+      /******/ if (typeof Symbol !== "undefined" && Symbol.toStringTag) {
+        /******/ Object.defineProperty(exports, Symbol.toStringTag, {
+          value: "Module",
+        });
+        /******/
+      }
+      /******/ Object.defineProperty(exports, "__esModule", { value: true });
+      /******/
+    };
+    /******/
+  })();
+  /******/
   /******/ /* webpack/runtime/compat */
   /******/
   /******/ if (typeof __nccwpck_require__ !== "undefined")
@@ -38826,8 +38886,28 @@ ${pendingInterceptorsFormatter.format(pending)}
   /******/
   /************************************************************************/
   var __webpack_exports__ = {};
-  // This entry need to be wrapped in an IIFE because it need to be isolated against other modules in the chunk.
+  // This entry need to be wrapped in an IIFE because it need to be in strict mode.
   (() => {
+    "use strict";
+    __nccwpck_require__.r(__webpack_exports__);
+    /* harmony import */ var _actions_core__WEBPACK_IMPORTED_MODULE_0__ =
+      __nccwpck_require__(2186);
+    /* harmony import */ var _actions_core__WEBPACK_IMPORTED_MODULE_0___default =
+      /*#__PURE__*/ __nccwpck_require__.n(
+        _actions_core__WEBPACK_IMPORTED_MODULE_0__,
+      );
+    /* harmony import */ var _actions_github__WEBPACK_IMPORTED_MODULE_1__ =
+      __nccwpck_require__(5438);
+    /* harmony import */ var _actions_github__WEBPACK_IMPORTED_MODULE_1___default =
+      /*#__PURE__*/ __nccwpck_require__.n(
+        _actions_github__WEBPACK_IMPORTED_MODULE_1__,
+      );
+    /* harmony import */ var node_fetch__WEBPACK_IMPORTED_MODULE_2__ =
+      __nccwpck_require__(467);
+    /* harmony import */ var node_fetch__WEBPACK_IMPORTED_MODULE_2___default =
+      /*#__PURE__*/ __nccwpck_require__.n(
+        node_fetch__WEBPACK_IMPORTED_MODULE_2__,
+      );
     // Copyright 2024 yu-iskw
     //
     // Licensed under the Apache License, Version 2.0 (the "License");
@@ -38842,20 +38922,21 @@ ${pendingInterceptorsFormatter.format(pending)}
     // See the License for the specific language governing permissions and
     // limitations under the License.
 
-    const core = __nccwpck_require__(2186);
-    const github = __nccwpck_require__(5438);
-    const fetch = __nccwpck_require__(467);
-
     async function run() {
       try {
-        const token = core.getInput("GITHUB_TOKEN");
-        const { context } = github;
+        const token = (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput)(
+          "GITHUB_TOKEN",
+        );
+        const { context } =
+          _actions_github__WEBPACK_IMPORTED_MODULE_1___default();
         const { number: prNumber } = context.payload.pull_request || {};
         const { owner, repo } = context.repo;
 
-        core.info(`PR Number: ${prNumber}`);
-        core.info(`Owner: ${owner}`);
-        core.info(`Repo: ${repo}`);
+        (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
+          `PR Number: ${prNumber}`,
+        );
+        (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(`Owner: ${owner}`);
+        (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(`Repo: ${repo}`);
 
         if (!prNumber) {
           throw new Error("Pull request number is undefined");
@@ -38868,15 +38949,19 @@ ${pendingInterceptorsFormatter.format(pending)}
           await convertPrToDraft(token, owner, repo, prNumber);
           await leaveCommentIfDraft(token, owner, repo, prNumber);
         } else {
-          core.info("All workflows passed.");
+          (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
+            "All workflows passed.",
+          );
         }
       } catch (error) {
-        core.setFailed(error.message);
+        (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.setFailed)(
+          error.message,
+        );
       }
     }
 
     async function fetchWorkflowRuns(token, owner, repo) {
-      const response = await fetch(
+      const response = await node_fetch__WEBPACK_IMPORTED_MODULE_2___default()(
         `https://api.github.com/repos/${owner}/${repo}/actions/runs?event=pull_request`,
         {
           headers: {
@@ -38886,7 +38971,9 @@ ${pendingInterceptorsFormatter.format(pending)}
         },
       );
 
-      core.info(`Fetch result status: ${response.status}`);
+      (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
+        `Fetch result status: ${response.status}`,
+      );
 
       if (!response.ok) {
         throw new Error(
@@ -38895,7 +38982,9 @@ ${pendingInterceptorsFormatter.format(pending)}
       }
 
       const data = await response.json();
-      core.info(`Workflow runs data: ${JSON.stringify(data, null, 2)}`);
+      (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
+        `Workflow runs data: ${JSON.stringify(data, null, 2)}`,
+      );
 
       if (!data.workflow_runs) {
         throw new Error("workflow_runs is undefined");
@@ -38909,7 +38998,9 @@ ${pendingInterceptorsFormatter.format(pending)}
         run.pull_requests.some((pr) => pr.number === prNumber),
       );
 
-      core.info(`Filtered runs: ${JSON.stringify(runs, null, 2)}`);
+      (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
+        `Filtered runs: ${JSON.stringify(runs, null, 2)}`,
+      );
       return runs;
     }
 
@@ -38920,11 +39011,11 @@ ${pendingInterceptorsFormatter.format(pending)}
     }
 
     async function convertPrToDraft(token, owner, repo, prNumber) {
-      core.info(
+      (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
         "Some workflows failed or are still running. Converting PR to draft...",
       );
 
-      const response = await fetch(
+      const response = await node_fetch__WEBPACK_IMPORTED_MODULE_2___default()(
         `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}`,
         {
           method: "PATCH",
@@ -38937,13 +39028,19 @@ ${pendingInterceptorsFormatter.format(pending)}
         },
       );
 
-      core.info(`Update result status: ${response.status}`);
-      core.info(`Update result status text: ${response.statusText}`);
-      core.info(
+      (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
+        `Update result status: ${response.status}`,
+      );
+      (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
+        `Update result status text: ${response.statusText}`,
+      );
+      (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
         `Update result headers: ${JSON.stringify(response.headers.raw(), null, 2)}`,
       );
       const responseBody = await response.text();
-      core.info(`Update result body: ${responseBody}`);
+      (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
+        `Update result body: ${responseBody}`,
+      );
 
       if (!response.ok) {
         throw new Error(
@@ -38953,16 +39050,17 @@ ${pendingInterceptorsFormatter.format(pending)}
     }
 
     async function leaveCommentIfDraft(token, owner, repo, prNumber) {
-      const prResponse = await fetch(
-        `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: "application/vnd.github.v3+json",
+      const prResponse =
+        await node_fetch__WEBPACK_IMPORTED_MODULE_2___default()(
+          `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              Accept: "application/vnd.github.v3+json",
+            },
           },
-        },
-      );
+        );
 
       if (!prResponse.ok) {
         throw new Error(
@@ -38973,26 +39071,31 @@ ${pendingInterceptorsFormatter.format(pending)}
       const prData = await prResponse.json();
 
       if (prData.draft) {
-        const commentResponse = await fetch(
-          `https://api.github.com/repos/${owner}/${repo}/issues/${prNumber}/comments`,
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-              Accept: "application/vnd.github.v3+json",
-            },
-            body: JSON.stringify({
-              body: `
+        const commentResponse =
+          await node_fetch__WEBPACK_IMPORTED_MODULE_2___default()(
+            `https://api.github.com/repos/${owner}/${repo}/issues/${prNumber}/comments`,
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+                Accept: "application/vnd.github.v3+json",
+              },
+              body: JSON.stringify({
+                body: `
           The pull request has been converted to a draft because some workflows failed or are still running.
           Please get it ready to review after all workflows are passed.
           `,
-            }),
-          },
-        );
+              }),
+            },
+          );
 
-        core.info(`Comment result status: ${commentResponse.status}`);
-        core.info(`Comment result status text: ${commentResponse.statusText}`);
+        (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
+          `Comment result status: ${commentResponse.status}`,
+        );
+        (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
+          `Comment result status text: ${commentResponse.statusText}`,
+        );
 
         if (!commentResponse.ok) {
           throw new Error(
@@ -39000,7 +39103,9 @@ ${pendingInterceptorsFormatter.format(pending)}
           );
         }
       } else {
-        core.info("The pull request is not in draft status.");
+        (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
+          "The pull request is not in draft status.",
+        );
       }
     }
 
