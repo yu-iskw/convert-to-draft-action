@@ -22,7 +22,8 @@ jobs:
   check_workflows:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      actions: read
+      contents: read
       pull-requests: write
     steps:
       - name: Checkout repository
