@@ -20,9 +20,13 @@ async function run() {
   try {
     const token = core.getInput('GITHUB_TOKEN');
     const context = github.context;
-    const prNumber = context.payload.pull_request.number;
+    const prNumber = context.payload.pull_request?.number;
     const owner = context.repo.owner;
     const repo = context.repo.repo;
+
+    if (!prNumber) {
+      throw new Error('Pull request number is undefined');
+    }
 
     const result = await fetch(`https://api.github.com/repos/${owner}/${repo}/actions/runs?event=pull_request`, {
       headers: {
@@ -30,7 +34,16 @@ async function run() {
         'Accept': 'application/vnd.github.v3+json',
       },
     });
+
+    if (!result.ok) {
+      throw new Error(`Failed to fetch workflow runs: ${result.statusText}`);
+    }
+
     const data = await result.json();
+    if (!data.workflow_runs) {
+      throw new Error('workflow_runs is undefined');
+    }
+
     const runs = data.workflow_runs.filter(run =>
       run.pull_requests.some(pr => pr.number === prNumber) &&
       run.conclusion !== null // Ensure only completed workflows are considered
@@ -38,7 +51,7 @@ async function run() {
 
     if (runs.some(run => run.conclusion !== 'success')) {
       core.info('Some workflows failed. Converting PR to draft...');
-      await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}`, {
+      const updateResult = await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}`, {
         method: 'PATCH',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -47,6 +60,10 @@ async function run() {
         },
         body: JSON.stringify({ draft: true }),
       });
+
+      if (!updateResult.ok) {
+        throw new Error(`Failed to update pull request: ${updateResult.statusText}`);
+      }
     } else {
       core.info('All workflows passed.');
     }
