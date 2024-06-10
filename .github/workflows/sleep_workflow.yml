@@ -25,4 +25,4 @@ jobs:
         uses: actions/checkout@v4
       - name: sleep
         run: |
-          sleep 120
+          sleep 90
