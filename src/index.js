@@ -22,6 +22,7 @@ async function run() {
     const { owner, repo } = context.repo;
     const workflowId = context.workflow.id;
 
+    info(`Context: ${JSON.stringify(context, null, 2)}`);
     info(`PR Number: ${prNumber}`);
     info(`Owner: ${owner}`);
     info(`Repo: ${repo}`);
