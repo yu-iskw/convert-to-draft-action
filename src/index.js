@@ -17,13 +17,16 @@ import { context, getOctokit } from "@actions/github";
 
 async function run() {
   try {
+    // Sleep 5 seconds to make sure other workflows are triggered
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+
     const token = getInput("GITHUB_TOKEN");
     const { number: prNumber } = context.payload.pull_request || {};
     const { owner, repo } = context.repo;
     const runId = context.runId;
     const workflow = context.workflow;
     // Get the head SHA from the context
-    const headSha = context.sha;
+    const headSha = context.payload.pull_request.head?.sha;
 
     info(`Context: ${JSON.stringify(context, null, 2)}`);
     info(`PR Number: ${prNumber}`);
@@ -100,7 +103,8 @@ function filterWorkflowRuns(workflowRuns, prNumber, headSha, workflowName) {
   const runs = workflowRuns.filter(
     (run) =>
       run.pull_requests.some((pr) => pr.number === prNumber) &&
-      run.head_sha === headSha,
+      run.head_sha === headSha &&
+      run.name !== workflowName,
   );
 
   info(`Filtered runs: ${JSON.stringify(runs, null, 2)}`);

@@ -38918,6 +38918,9 @@ ${pendingInterceptorsFormatter.format(pending)}
 
     async function run() {
       try {
+        // Sleep 5 seconds to make sure other workflows are triggered
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+
         const token = (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput)(
           "GITHUB_TOKEN",
         );
@@ -38932,7 +38935,8 @@ ${pendingInterceptorsFormatter.format(pending)}
           _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.workflow;
         // Get the head SHA from the context
         const headSha =
-          _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.sha;
+          _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.payload
+            .pull_request.head.sha;
 
         (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
           `Context: ${JSON.stringify(_actions_github__WEBPACK_IMPORTED_MODULE_1__.context, null, 2)}`,
@@ -39039,7 +39043,8 @@ ${pendingInterceptorsFormatter.format(pending)}
       const runs = workflowRuns.filter(
         (run) =>
           run.pull_requests.some((pr) => pr.number === prNumber) &&
-          run.head_sha === headSha,
+          run.head_sha === headSha &&
+          run.name !== workflowName,
       );
 
       (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
