@@ -26,8 +26,8 @@ inputs:
     description: Comment body
     required: false
     default: |
-      The pull request has been converted to a draft because some workflows failed or are still running.
-      Please get it ready to review after all workflows are passed.
+      The pull request has been converted to a draft because some workflows did not complete successfully or are still in progress.
+      Kindly ensure all workflows pass before marking it as ready for review.
 runs:
   using: node20
   main: dist/index.js
