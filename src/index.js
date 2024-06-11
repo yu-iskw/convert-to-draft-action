@@ -107,8 +107,14 @@ async function convertPrToDraft(token, owner, repo, prNumber) {
     }
   `;
 
+  const pullRequestId = await getPullRequestId(octokit, owner, repo, prNumber);
+
+  if (!pullRequestId) {
+    throw new Error(`Could not resolve to a node with the global id of '${prNumber}'`);
+  }
+
   const variables = {
-    id: await getPullRequestId(octokit, owner, repo, prNumber),
+    id: pullRequestId,
   };
 
   const response = await octokit.graphql(query, variables);

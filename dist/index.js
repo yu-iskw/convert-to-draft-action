@@ -33883,19 +33883,25 @@ async function convertPrToDraft(token, owner, repo, prNumber) {
 
   const octokit = (0,_actions_github__WEBPACK_IMPORTED_MODULE_1__.getOctokit)(token);
   const query = `
-    mutation($input: ConvertPullRequestToDraftInput!) {
-      convertPullRequestToDraft(input: $input) {
+    mutation($id: ID!) {
+      convertPullRequestToDraft(input: { pullRequestId: $id }) {
         pullRequest {
           id
+          number
+          isDraft
         }
       }
     }
   `;
 
+  const pullRequestId = await getPullRequestId(octokit, owner, repo, prNumber);
+
+  if (!pullRequestId) {
+    throw new Error(`Could not resolve to a node with the global id of '${prNumber}'`);
+  }
+
   const variables = {
-    input: {
-      pullRequestId: await getPullRequestId(octokit, owner, repo, prNumber),
-    },
+    id: pullRequestId,
   };
 
   const response = await octokit.graphql(query, variables);
@@ -33908,29 +33914,29 @@ async function convertPrToDraft(token, owner, repo, prNumber) {
 }
 
 async function getPullRequestId(octokit, owner, repo, prNumber) {
-  const { data: pullRequest } = await octokit.pulls.get({
+  const pullRequest = await octokit.rest.pulls.get({
     owner,
     repo,
     pull_number: prNumber,
   });
 
-  if (!pullRequest.node_id) {
+  if (!pullRequest.data.node_id) {
     throw new Error(`Could not resolve to a node with the global id of '${prNumber}'`);
   }
 
-  return pullRequest.node_id;
+  return pullRequest.data.node_id;
 }
 
 async function leaveCommentIfDraft(token, owner, repo, prNumber) {
   const octokit = (0,_actions_github__WEBPACK_IMPORTED_MODULE_1__.getOctokit)(token);
-  const { data: prData } = await octokit.pulls.get({
+  const { data: prData } = await octokit.rest.pulls.get({
     owner,
     repo,
     pull_number: prNumber,
   });
 
   if (prData.draft) {
-    await octokit.issues.createComment({
+    await octokit.rest.issues.createComment({
       owner,
       repo,
       issue_number: prNumber,
