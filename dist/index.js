@@ -38924,6 +38924,11 @@ ${pendingInterceptorsFormatter.format(pending)}
         const token = (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput)(
           "GITHUB_TOKEN",
         );
+        const leaveComment = (0,
+        _actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput)("leave_comment");
+        const commentBody = (0,
+        _actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput)("comment_body");
+
         const { number: prNumber } =
           _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.payload
             .pull_request || {};
@@ -38981,9 +38986,19 @@ ${pendingInterceptorsFormatter.format(pending)}
           workflow,
         );
 
+        // Convert the PR to draft if some workflows failed or are still running
         if (hasFailedOrRunningWorkflows(runs)) {
           await convertPrToDraft(token, owner, repo, prNumber);
-          await leaveCommentIfDraft(token, owner, repo, prNumber);
+          // Leave a comment if the PR is converted to draft and leave_comment is true
+          if (leaveComment === "1") {
+            await leaveCommentIfDraft(
+              token,
+              owner,
+              repo,
+              prNumber,
+              commentBody,
+            );
+          }
         } else {
           (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
             "All workflows passed.",
@@ -39120,7 +39135,13 @@ ${pendingInterceptorsFormatter.format(pending)}
       return pullRequest.data.node_id;
     }
 
-    async function leaveCommentIfDraft(token, owner, repo, prNumber) {
+    async function leaveCommentIfDraft(
+      token,
+      owner,
+      repo,
+      prNumber,
+      commentBody,
+    ) {
       const octokit = (0,
       _actions_github__WEBPACK_IMPORTED_MODULE_1__.getOctokit)(token);
       const { data: prData } = await octokit.rest.pulls.get({
@@ -39134,10 +39155,7 @@ ${pendingInterceptorsFormatter.format(pending)}
           owner,
           repo,
           issue_number: prNumber,
-          body: `
-      The pull request has been converted to a draft because some workflows failed or are still running.
-      Please get it ready to review after all workflows are passed.
-      `,
+          body: commentBody,
         });
 
         (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(

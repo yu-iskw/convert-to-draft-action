@@ -37,3 +37,8 @@ jobs:
         uses: ./
         with:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+          leave_comment: "1"
+          comment_body: |
+            [TEST]
+            The pull request has been converted to a draft because some workflows failed or are still running.
+            Please get it ready to review after all workflows are passed.

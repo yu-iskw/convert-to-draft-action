@@ -21,6 +21,9 @@ async function run() {
     await new Promise((resolve) => setTimeout(resolve, 5000));
 
     const token = getInput("GITHUB_TOKEN");
+    const leaveComment = getInput("leave_comment");
+    const commentBody = getInput("comment_body");
+
     const { number: prNumber } = context.payload.pull_request || {};
     const { owner, repo } = context.repo;
     const runId = context.runId;
@@ -55,9 +58,13 @@ async function run() {
     const workflowRuns = await fetchWorkflowRuns(token, owner, repo);
     const runs = filterWorkflowRuns(workflowRuns, prNumber, headSha, workflow);
 
+    // Convert the PR to draft if some workflows failed or are still running
     if (hasFailedOrRunningWorkflows(runs)) {
       await convertPrToDraft(token, owner, repo, prNumber);
-      await leaveCommentIfDraft(token, owner, repo, prNumber);
+      // Leave a comment if the PR is converted to draft and leave_comment is true
+      if (leaveComment === "1") {
+        await leaveCommentIfDraft(token, owner, repo, prNumber, commentBody);
+      }
     } else {
       info("All workflows passed.");
     }
@@ -170,7 +177,7 @@ async function getPullRequestId(octokit, owner, repo, prNumber) {
   return pullRequest.data.node_id;
 }
 
-async function leaveCommentIfDraft(token, owner, repo, prNumber) {
+async function leaveCommentIfDraft(token, owner, repo, prNumber, commentBody) {
   const octokit = getOctokit(token);
   const { data: prData } = await octokit.rest.pulls.get({
     owner,
@@ -183,10 +190,7 @@ async function leaveCommentIfDraft(token, owner, repo, prNumber) {
       owner,
       repo,
       issue_number: prNumber,
-      body: `
-      The pull request has been converted to a draft because some workflows failed or are still running.
-      Please get it ready to review after all workflows are passed.
-      `,
+      body: commentBody,
     });
 
     info("Comment left on the pull request.");
