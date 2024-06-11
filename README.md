@@ -37,5 +37,27 @@ jobs:
       - name: Convert PR to Draft
         uses: yu-iskw/convert-to-draft-action@v0.1.2
         with:
+          # Required
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+          # Optional
+          leave_comment: "1"
+          # Optional
+          comment_body: |
+            The pull request has been converted to a draft because some workflows failed or are still running.
+            Please get it ready to review after all workflows are passed.
 ```
+
+## Inputs
+
+These inputs are defined in the `action.yml` file and are used to configure the behavior of the action when it runs.
+The `convert-to-draft-action` accepts the following inputs:
+
+- `GITHUB_TOKEN` (required):
+  - **Description**: The GitHub token used to authenticate the action.
+  - **Default**: None
+- `leave_comment` (optional):
+  - **Description**: A flag to determine whether to leave a comment when the pull request is converted to a draft.
+  - **Default**: "1"
+- `comment_body` (optional):
+  - **Description**: The body of the comment to leave when the pull request is converted to a draft.
+  - **Default**: SEE [action.yml](./action.yml)

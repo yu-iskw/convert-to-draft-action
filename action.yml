@@ -18,6 +18,16 @@ inputs:
   GITHUB_TOKEN:
     description: GitHub Token
     required: true
+  leave_comment:
+    description: Leave a comment if the PR is converted to draft
+    required: false
+    default: "1"
+  comment_body:
+    description: Comment body
+    required: false
+    default: |
+      The pull request has been converted to a draft because some workflows did not complete successfully or are still in progress.
+      Kindly ensure all workflows pass before marking it as ready for review.
 runs:
   using: node20
   main: dist/index.js
