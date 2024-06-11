@@ -38926,14 +38926,17 @@ ${pendingInterceptorsFormatter.format(pending)}
             .pull_request || {};
         const { owner, repo } =
           _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.repo;
-        const runNumber =
-          _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.runNumber;
+        const workflowId =
+          _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.workflow.id;
 
         (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
           `PR Number: ${prNumber}`,
         );
         (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(`Owner: ${owner}`);
         (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(`Repo: ${repo}`);
+        (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
+          `Workflow ID: ${workflowId}`,
+        );
 
         if (!prNumber) {
           throw new Error("Pull request number is undefined");
@@ -38955,7 +38958,7 @@ ${pendingInterceptorsFormatter.format(pending)}
         }
 
         const workflowRuns = await fetchWorkflowRuns(token, owner, repo);
-        const runs = filterWorkflowRuns(workflowRuns, prNumber, runNumber);
+        const runs = filterWorkflowRuns(workflowRuns, prNumber, workflowId);
 
         if (hasFailedOrRunningWorkflows(runs)) {
           await convertPrToDraft(token, owner, repo, prNumber);
@@ -39013,11 +39016,11 @@ ${pendingInterceptorsFormatter.format(pending)}
       return data.workflow_runs;
     }
 
-    function filterWorkflowRuns(workflowRuns, prNumber, excluded_runNumber) {
+    function filterWorkflowRuns(workflowRuns, prNumber, excludedWorkflowId) {
       const runs = workflowRuns.filter(
         (run) =>
           run.pull_requests.some((pr) => pr.number === prNumber) &&
-          run.run_number !== excluded_runNumber,
+          run.workflow_id !== excludedWorkflowId,
       );
 
       (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
