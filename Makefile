@@ -1,7 +1,7 @@
 install:
 	npm install --include=dev --verbose
 
-build: clean build-npm format
+build: clean build-npm format audit
 
 build-npm:
 	npm run build
@@ -14,3 +14,6 @@ format:
 
 clean:
 	rm -rf dist/*.js
+
+audit:
+	npm audit --audit-level high
