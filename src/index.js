@@ -21,12 +21,15 @@ async function run() {
     const { number: prNumber } = context.payload.pull_request || {};
     const { owner, repo } = context.repo;
     const runId = context.runId;
+    const workflow = context.workflow;
+    const headCommit = context.payload.headCommit.id;
 
     info(`Context: ${JSON.stringify(context, null, 2)}`);
     info(`PR Number: ${prNumber}`);
     info(`Owner: ${owner}`);
     info(`Repo: ${repo}`);
     info(`Run ID: ${runId}`);
+    info(`Workflow: ${workflow}`);
 
     if (!prNumber) {
       throw new Error("Pull request number is undefined");
@@ -45,7 +48,12 @@ async function run() {
     }
 
     const workflowRuns = await fetchWorkflowRuns(token, owner, repo);
-    const runs = filterWorkflowRuns(workflowRuns, prNumber, runId);
+    const runs = filterWorkflowRuns(
+      workflowRuns,
+      prNumber,
+      headCommit,
+      workflow,
+    );
 
     if (hasFailedOrRunningWorkflows(runs)) {
       await convertPrToDraft(token, owner, repo, prNumber);
@@ -91,11 +99,12 @@ async function fetchWorkflowRuns(token, owner, repo) {
   return data.workflow_runs;
 }
 
-function filterWorkflowRuns(workflowRuns, prNumber, excludedRunId) {
+function filterWorkflowRuns(workflowRuns, prNumber, headCommit, workflowName) {
   const runs = workflowRuns.filter(
     (run) =>
       run.pull_requests.some((pr) => pr.number === prNumber) &&
-      run.id !== excludedRunId,
+      run.head_commit.id === headCommit &&
+      run.name !== workflowName,
   );
 
   info(`Filtered runs: ${JSON.stringify(runs, null, 2)}`);
@@ -104,7 +113,7 @@ function filterWorkflowRuns(workflowRuns, prNumber, excludedRunId) {
 
 function hasFailedOrRunningWorkflows(runs) {
   return runs.some(
-    (run) => run.conclusion !== "completed" || run.conclusion === null,
+    (run) => run.conclusion !== "success" || run.conclusion === null,
   );
 }
 

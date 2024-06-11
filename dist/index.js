@@ -38928,6 +38928,11 @@ ${pendingInterceptorsFormatter.format(pending)}
           _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.repo;
         const runId =
           _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.runId;
+        const workflow =
+          _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.workflow;
+        const headCommit =
+          _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.payload
+            .headCommit.id;
 
         (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
           `Context: ${JSON.stringify(_actions_github__WEBPACK_IMPORTED_MODULE_1__.context, null, 2)}`,
@@ -38939,6 +38944,9 @@ ${pendingInterceptorsFormatter.format(pending)}
         (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(`Repo: ${repo}`);
         (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
           `Run ID: ${runId}`,
+        );
+        (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
+          `Workflow: ${workflow}`,
         );
 
         if (!prNumber) {
@@ -38961,7 +38969,12 @@ ${pendingInterceptorsFormatter.format(pending)}
         }
 
         const workflowRuns = await fetchWorkflowRuns(token, owner, repo);
-        const runs = filterWorkflowRuns(workflowRuns, prNumber, runId);
+        const runs = filterWorkflowRuns(
+          workflowRuns,
+          prNumber,
+          headCommit,
+          workflow,
+        );
 
         if (hasFailedOrRunningWorkflows(runs)) {
           await convertPrToDraft(token, owner, repo, prNumber);
@@ -39019,11 +39032,17 @@ ${pendingInterceptorsFormatter.format(pending)}
       return data.workflow_runs;
     }
 
-    function filterWorkflowRuns(workflowRuns, prNumber, excludedRunId) {
+    function filterWorkflowRuns(
+      workflowRuns,
+      prNumber,
+      headCommit,
+      workflowName,
+    ) {
       const runs = workflowRuns.filter(
         (run) =>
           run.pull_requests.some((pr) => pr.number === prNumber) &&
-          run.id !== excludedRunId,
+          run.head_commit.id === headCommit &&
+          run.name !== workflowName,
       );
 
       (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
@@ -39034,7 +39053,7 @@ ${pendingInterceptorsFormatter.format(pending)}
 
     function hasFailedOrRunningWorkflows(runs) {
       return runs.some(
-        (run) => run.conclusion !== "completed" || run.conclusion === null,
+        (run) => run.conclusion !== "success" || run.conclusion === null,
       );
     }
 
