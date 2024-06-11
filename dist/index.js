@@ -38902,12 +38902,6 @@ ${pendingInterceptorsFormatter.format(pending)}
       /*#__PURE__*/ __nccwpck_require__.n(
         _actions_github__WEBPACK_IMPORTED_MODULE_1__,
       );
-    /* harmony import */ var node_fetch__WEBPACK_IMPORTED_MODULE_2__ =
-      __nccwpck_require__(467);
-    /* harmony import */ var node_fetch__WEBPACK_IMPORTED_MODULE_2___default =
-      /*#__PURE__*/ __nccwpck_require__.n(
-        node_fetch__WEBPACK_IMPORTED_MODULE_2__,
-      );
     // Copyright 2024 yu-iskw
     //
     // Licensed under the Apache License, Version 2.0 (the "License");
@@ -38924,6 +38918,9 @@ ${pendingInterceptorsFormatter.format(pending)}
 
     async function run() {
       try {
+        // Sleep 5 seconds to make sure other workflows are triggered
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+
         const token = (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput)(
           "GITHUB_TOKEN",
         );
@@ -38932,19 +38929,57 @@ ${pendingInterceptorsFormatter.format(pending)}
             .pull_request || {};
         const { owner, repo } =
           _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.repo;
+        const runId =
+          _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.runId;
+        const workflow =
+          _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.workflow;
+        // Get the head SHA from the context
+        const headSha =
+          _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.payload
+            .pull_request.head.sha;
 
+        // info(`Context: ${JSON.stringify(context, null, 2)}`);
         (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
           `PR Number: ${prNumber}`,
         );
         (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(`Owner: ${owner}`);
         (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(`Repo: ${repo}`);
+        (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
+          `Run ID: ${runId}`,
+        );
+        (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
+          `Workflow: ${workflow}`,
+        );
+        (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
+          `Head SHA: ${headSha}`,
+        );
 
         if (!prNumber) {
           throw new Error("Pull request number is undefined");
         }
 
+        const octokit = (0,
+        _actions_github__WEBPACK_IMPORTED_MODULE_1__.getOctokit)(token);
+        const { data: prData } = await octokit.rest.pulls.get({
+          owner,
+          repo,
+          pull_number: prNumber,
+        });
+
+        if (prData.draft) {
+          (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
+            "The pull request is already in draft status.",
+          );
+          return;
+        }
+
         const workflowRuns = await fetchWorkflowRuns(token, owner, repo);
-        const runs = filterWorkflowRuns(workflowRuns, prNumber);
+        const runs = filterWorkflowRuns(
+          workflowRuns,
+          prNumber,
+          headSha,
+          workflow,
+        );
 
         if (hasFailedOrRunningWorkflows(runs)) {
           await convertPrToDraft(token, owner, repo, prNumber);
@@ -38962,7 +38997,7 @@ ${pendingInterceptorsFormatter.format(pending)}
     }
 
     async function fetchWorkflowRuns(token, owner, repo) {
-      const response = await node_fetch__WEBPACK_IMPORTED_MODULE_2___default()(
+      const response = await fetch(
         `https://api.github.com/repos/${owner}/${repo}/actions/runs?event=pull_request`,
         {
           headers: {
@@ -38983,8 +39018,16 @@ ${pendingInterceptorsFormatter.format(pending)}
       }
 
       const data = await response.json();
+      const workflowStatuses = data.workflow_runs.reduce((acc, run) => {
+        acc[run.status] = (acc[run.status] || 0) + 1;
+        return acc;
+      }, {});
+
       (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
-        `Workflow runs data: ${JSON.stringify(data, null, 2)}`,
+        `Workflow runs data: ${data.workflow_runs.length} runs found`,
+      );
+      (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
+        `Workflow runs by status: ${JSON.stringify(workflowStatuses, null, 2)}`,
       );
 
       if (!data.workflow_runs) {
@@ -38994,9 +39037,12 @@ ${pendingInterceptorsFormatter.format(pending)}
       return data.workflow_runs;
     }
 
-    function filterWorkflowRuns(workflowRuns, prNumber) {
-      const runs = workflowRuns.filter((run) =>
-        run.pull_requests.some((pr) => pr.number === prNumber),
+    function filterWorkflowRuns(workflowRuns, prNumber, headSha, workflowName) {
+      const runs = workflowRuns.filter(
+        (run) =>
+          run.pull_requests.some((pr) => pr.number === prNumber) &&
+          run.head_sha === headSha &&
+          run.name !== workflowName,
       );
 
       (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
@@ -39016,93 +39062,87 @@ ${pendingInterceptorsFormatter.format(pending)}
         "Some workflows failed or are still running. Converting PR to draft...",
       );
 
-      const response = await node_fetch__WEBPACK_IMPORTED_MODULE_2___default()(
-        `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}`,
-        {
-          method: "PATCH",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-            Accept: "application/vnd.github.v3+json",
-          },
-          body: JSON.stringify({ draft: true }),
-        },
+      const octokit = (0,
+      _actions_github__WEBPACK_IMPORTED_MODULE_1__.getOctokit)(token);
+      const query = `
+    mutation($id: ID!) {
+      convertPullRequestToDraft(input: { pullRequestId: $id }) {
+        pullRequest {
+          id
+          number
+          isDraft
+        }
+      }
+    }
+  `;
+
+      const pullRequestId = await getPullRequestId(
+        octokit,
+        owner,
+        repo,
+        prNumber,
       );
 
-      (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
-        `Update result status: ${response.status}`,
-      );
-      (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
-        `Update result status text: ${response.statusText}`,
-      );
-      (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
-        `Update result headers: ${JSON.stringify(response.headers.raw(), null, 2)}`,
-      );
-      const responseBody = await response.text();
-      (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
-        `Update result body: ${responseBody}`,
-      );
-
-      if (!response.ok) {
+      if (!pullRequestId) {
         throw new Error(
-          `Failed to update pull request: ${response.statusText}`,
+          `Could not resolve to a node with the global id of '${prNumber}'`,
         );
       }
+
+      const variables = {
+        id: pullRequestId,
+      };
+
+      const response = await octokit.graphql(query, variables);
+
+      if (!response.convertPullRequestToDraft) {
+        throw new Error("Failed to convert pull request to draft");
+      }
+
+      (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
+        "Pull request successfully converted to draft.",
+      );
+    }
+
+    async function getPullRequestId(octokit, owner, repo, prNumber) {
+      const pullRequest = await octokit.rest.pulls.get({
+        owner,
+        repo,
+        pull_number: prNumber,
+      });
+
+      if (!pullRequest.data.node_id) {
+        throw new Error(
+          `Could not resolve to a node with the global id of '${prNumber}'`,
+        );
+      }
+
+      return pullRequest.data.node_id;
     }
 
     async function leaveCommentIfDraft(token, owner, repo, prNumber) {
-      const prResponse =
-        await node_fetch__WEBPACK_IMPORTED_MODULE_2___default()(
-          `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}`,
-          {
-            method: "GET",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              Accept: "application/vnd.github.v3+json",
-            },
-          },
-        );
-
-      if (!prResponse.ok) {
-        throw new Error(
-          `Failed to fetch pull request: ${prResponse.statusText}`,
-        );
-      }
-
-      const prData = await prResponse.json();
+      const octokit = (0,
+      _actions_github__WEBPACK_IMPORTED_MODULE_1__.getOctokit)(token);
+      const { data: prData } = await octokit.rest.pulls.get({
+        owner,
+        repo,
+        pull_number: prNumber,
+      });
 
       if (prData.draft) {
-        const commentResponse =
-          await node_fetch__WEBPACK_IMPORTED_MODULE_2___default()(
-            `https://api.github.com/repos/${owner}/${repo}/issues/${prNumber}/comments`,
-            {
-              method: "POST",
-              headers: {
-                Authorization: `Bearer ${token}`,
-                "Content-Type": "application/json",
-                Accept: "application/vnd.github.v3+json",
-              },
-              body: JSON.stringify({
-                body: `
-          The pull request has been converted to a draft because some workflows failed or are still running.
-          Please get it ready to review after all workflows are passed.
-          `,
-              }),
-            },
-          );
+        await octokit.rest.issues.createComment({
+          owner,
+          repo,
+          issue_number: prNumber,
+          body: `
+      The pull request has been converted to a draft because some workflows failed or are still running.
+      Please get it ready to review after all workflows are passed.
+      `,
+        });
 
         (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
-          `Comment result status: ${commentResponse.status}`,
+          "Comment left on the pull request.",
         );
-        (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
-          `Comment result status text: ${commentResponse.statusText}`,
-        );
-
-        if (!commentResponse.ok) {
-          throw new Error(
-            `Failed to leave a comment on the pull request: ${commentResponse.statusText}`,
-          );
-        }
       } else {
         (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
           "The pull request is not in draft status.",

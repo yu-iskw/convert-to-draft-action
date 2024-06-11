@@ -16,15 +16,20 @@ name: Test the action
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types:
+      [
+        opened,
+        synchronize,
+        reopened,
+        ready_for_review,
+        review_requested,
+        auto_merge_enabled,
+      ]
 
 jobs:
   check_workflows:
     runs-on: ubuntu-latest
-    permissions:
-      actions: read
-      contents: read
-      pull-requests: write
+    permissions: write-all
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

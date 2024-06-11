@@ -13,25 +13,47 @@
 // limitations under the License.
 
 import { getInput, info, setFailed } from "@actions/core";
-import { context } from "@actions/github";
-import fetch from "node-fetch";
+import { context, getOctokit } from "@actions/github";
 
 async function run() {
   try {
+    // Sleep 5 seconds to make sure other workflows are triggered
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+
     const token = getInput("GITHUB_TOKEN");
     const { number: prNumber } = context.payload.pull_request || {};
     const { owner, repo } = context.repo;
+    const runId = context.runId;
+    const workflow = context.workflow;
+    // Get the head SHA from the context
+    const headSha = context.payload.pull_request.head?.sha;
 
+    // info(`Context: ${JSON.stringify(context, null, 2)}`);
     info(`PR Number: ${prNumber}`);
     info(`Owner: ${owner}`);
     info(`Repo: ${repo}`);
+    info(`Run ID: ${runId}`);
+    info(`Workflow: ${workflow}`);
+    info(`Head SHA: ${headSha}`);
 
     if (!prNumber) {
       throw new Error("Pull request number is undefined");
     }
 
+    const octokit = getOctokit(token);
+    const { data: prData } = await octokit.rest.pulls.get({
+      owner,
+      repo,
+      pull_number: prNumber,
+    });
+
+    if (prData.draft) {
+      info("The pull request is already in draft status.");
+      return;
+    }
+
     const workflowRuns = await fetchWorkflowRuns(token, owner, repo);
-    const runs = filterWorkflowRuns(workflowRuns, prNumber);
+    const runs = filterWorkflowRuns(workflowRuns, prNumber, headSha, workflow);
 
     if (hasFailedOrRunningWorkflows(runs)) {
       await convertPrToDraft(token, owner, repo, prNumber);
@@ -62,7 +84,13 @@ async function fetchWorkflowRuns(token, owner, repo) {
   }
 
   const data = await response.json();
-  info(`Workflow runs data: ${JSON.stringify(data, null, 2)}`);
+  const workflowStatuses = data.workflow_runs.reduce((acc, run) => {
+    acc[run.status] = (acc[run.status] || 0) + 1;
+    return acc;
+  }, {});
+
+  info(`Workflow runs data: ${data.workflow_runs.length} runs found`);
+  info(`Workflow runs by status: ${JSON.stringify(workflowStatuses, null, 2)}`);
 
   if (!data.workflow_runs) {
     throw new Error("workflow_runs is undefined");
@@ -71,9 +99,12 @@ async function fetchWorkflowRuns(token, owner, repo) {
   return data.workflow_runs;
 }
 
-function filterWorkflowRuns(workflowRuns, prNumber) {
-  const runs = workflowRuns.filter((run) =>
-    run.pull_requests.some((pr) => pr.number === prNumber),
+function filterWorkflowRuns(workflowRuns, prNumber, headSha, workflowName) {
+  const runs = workflowRuns.filter(
+    (run) =>
+      run.pull_requests.some((pr) => pr.number === prNumber) &&
+      run.head_sha === headSha &&
+      run.name !== workflowName,
   );
 
   info(`Filtered runs: ${JSON.stringify(runs, null, 2)}`);
@@ -89,77 +120,76 @@ function hasFailedOrRunningWorkflows(runs) {
 async function convertPrToDraft(token, owner, repo, prNumber) {
   info("Some workflows failed or are still running. Converting PR to draft...");
 
-  const response = await fetch(
-    `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}`,
-    {
-      method: "PATCH",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-        Accept: "application/vnd.github.v3+json",
-      },
-      body: JSON.stringify({ draft: true }),
-    },
-  );
+  const octokit = getOctokit(token);
+  const query = `
+    mutation($id: ID!) {
+      convertPullRequestToDraft(input: { pullRequestId: $id }) {
+        pullRequest {
+          id
+          number
+          isDraft
+        }
+      }
+    }
+  `;
 
-  info(`Update result status: ${response.status}`);
-  info(`Update result status text: ${response.statusText}`);
-  info(
-    `Update result headers: ${JSON.stringify(response.headers.raw(), null, 2)}`,
-  );
-  const responseBody = await response.text();
-  info(`Update result body: ${responseBody}`);
+  const pullRequestId = await getPullRequestId(octokit, owner, repo, prNumber);
 
-  if (!response.ok) {
-    throw new Error(`Failed to update pull request: ${response.statusText}`);
+  if (!pullRequestId) {
+    throw new Error(
+      `Could not resolve to a node with the global id of '${prNumber}'`,
+    );
   }
+
+  const variables = {
+    id: pullRequestId,
+  };
+
+  const response = await octokit.graphql(query, variables);
+
+  if (!response.convertPullRequestToDraft) {
+    throw new Error("Failed to convert pull request to draft");
+  }
+
+  info("Pull request successfully converted to draft.");
+}
+
+async function getPullRequestId(octokit, owner, repo, prNumber) {
+  const pullRequest = await octokit.rest.pulls.get({
+    owner,
+    repo,
+    pull_number: prNumber,
+  });
+
+  if (!pullRequest.data.node_id) {
+    throw new Error(
+      `Could not resolve to a node with the global id of '${prNumber}'`,
+    );
+  }
+
+  return pullRequest.data.node_id;
 }
 
 async function leaveCommentIfDraft(token, owner, repo, prNumber) {
-  const prResponse = await fetch(
-    `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}`,
-    {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: "application/vnd.github.v3+json",
-      },
-    },
-  );
-
-  if (!prResponse.ok) {
-    throw new Error(`Failed to fetch pull request: ${prResponse.statusText}`);
-  }
-
-  const prData = await prResponse.json();
+  const octokit = getOctokit(token);
+  const { data: prData } = await octokit.rest.pulls.get({
+    owner,
+    repo,
+    pull_number: prNumber,
+  });
 
   if (prData.draft) {
-    const commentResponse = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/issues/${prNumber}/comments`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-          Accept: "application/vnd.github.v3+json",
-        },
-        body: JSON.stringify({
-          body: `
-          The pull request has been converted to a draft because some workflows failed or are still running.
-          Please get it ready to review after all workflows are passed.
-          `,
-        }),
-      },
-    );
+    await octokit.rest.issues.createComment({
+      owner,
+      repo,
+      issue_number: prNumber,
+      body: `
+      The pull request has been converted to a draft because some workflows failed or are still running.
+      Please get it ready to review after all workflows are passed.
+      `,
+    });
 
-    info(`Comment result status: ${commentResponse.status}`);
-    info(`Comment result status text: ${commentResponse.statusText}`);
-
-    if (!commentResponse.ok) {
-      throw new Error(
-        `Failed to leave a comment on the pull request: ${commentResponse.statusText}`,
-      );
-    }
+    info("Comment left on the pull request.");
   } else {
     info("The pull request is not in draft status.");
   }
