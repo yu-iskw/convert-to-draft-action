@@ -22,7 +22,8 @@ async function run() {
     const { owner, repo } = context.repo;
     const runId = context.runId;
     const workflow = context.workflow;
-    const headSha = context.payload.headCommit.id;
+    // Get the head SHA from the context
+    const headSha = context.sha;
 
     info(`Context: ${JSON.stringify(context, null, 2)}`);
     info(`PR Number: ${prNumber}`);

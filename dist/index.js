@@ -38930,9 +38930,9 @@ ${pendingInterceptorsFormatter.format(pending)}
           _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.runId;
         const workflow =
           _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.workflow;
+        // Get the head SHA from the context
         const headSha =
-          _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.payload
-            .headCommit.id;
+          _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.sha;
 
         (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
           `Context: ${JSON.stringify(_actions_github__WEBPACK_IMPORTED_MODULE_1__.context, null, 2)}`,
