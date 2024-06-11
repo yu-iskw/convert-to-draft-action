@@ -777,8 +777,8 @@
             const res = yield httpclient
               .getJson(id_token_url)
               .catch((error) => {
-                throw new Error(`Failed to get ID Token. \n
-        Error Code : ${error.statusCode}\n
+                throw new Error(`Failed to get ID Token. \n 
+        Error Code : ${error.statusCode}\n 
         Error Message: ${error.message}`);
               });
             const id_token =
@@ -8028,7 +8028,7 @@
       function parseURL(urlStr) {
         /*
  	Check whether the URL is absolute or not
- 	  Scheme: https://tools.ietf.org/html/rfc3986#section-3.1
+ 		Scheme: https://tools.ietf.org/html/rfc3986#section-3.1
  	Absolute URL: https://tools.ietf.org/html/rfc3986#section-4.3
  */
         if (/^[a-zA-Z][a-zA-Z\d+\-.]*:/.exec(urlStr)) {
@@ -38926,6 +38926,10 @@ ${pendingInterceptorsFormatter.format(pending)}
             .pull_request || {};
         const { owner, repo } =
           _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.repo;
+        const { number: runNumber } =
+          _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.runNumber;
+        const { number: runId } =
+          _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.runId;
 
         (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
           `PR Number: ${prNumber}`,
@@ -38953,7 +38957,12 @@ ${pendingInterceptorsFormatter.format(pending)}
         }
 
         const workflowRuns = await fetchWorkflowRuns(token, owner, repo);
-        const runs = filterWorkflowRuns(workflowRuns, prNumber);
+        const runs = filterWorkflowRuns(
+          workflowRuns,
+          prNumber,
+          excluded_runNumber,
+          excluded_runId,
+        );
 
         if (hasFailedOrRunningWorkflows(runs)) {
           await convertPrToDraft(token, owner, repo, prNumber);
@@ -39011,9 +39020,17 @@ ${pendingInterceptorsFormatter.format(pending)}
       return data.workflow_runs;
     }
 
-    function filterWorkflowRuns(workflowRuns, prNumber) {
-      const runs = workflowRuns.filter((run) =>
-        run.pull_requests.some((pr) => pr.number === prNumber),
+    function filterWorkflowRuns(
+      workflowRuns,
+      prNumber,
+      excluded_runNumber,
+      excluded_runId,
+    ) {
+      const runs = workflowRuns.filter(
+        (run) =>
+          run.pull_requests.some((pr) => pr.number === prNumber) &&
+          run.run_number !== excluded_runNumber &&
+          run.id !== excluded_runId,
       );
 
       (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(

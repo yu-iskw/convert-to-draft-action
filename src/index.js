@@ -20,6 +20,8 @@ async function run() {
     const token = getInput("GITHUB_TOKEN");
     const { number: prNumber } = context.payload.pull_request || {};
     const { owner, repo } = context.repo;
+    const { number: runNumber } = context.runNumber;
+    const { number: runId } = context.runId;
 
     info(`PR Number: ${prNumber}`);
     info(`Owner: ${owner}`);
@@ -42,7 +44,12 @@ async function run() {
     }
 
     const workflowRuns = await fetchWorkflowRuns(token, owner, repo);
-    const runs = filterWorkflowRuns(workflowRuns, prNumber);
+    const runs = filterWorkflowRuns(
+      workflowRuns,
+      prNumber,
+      excluded_runNumber,
+      excluded_runId,
+    );
 
     if (hasFailedOrRunningWorkflows(runs)) {
       await convertPrToDraft(token, owner, repo, prNumber);
@@ -88,9 +95,17 @@ async function fetchWorkflowRuns(token, owner, repo) {
   return data.workflow_runs;
 }
 
-function filterWorkflowRuns(workflowRuns, prNumber) {
-  const runs = workflowRuns.filter((run) =>
-    run.pull_requests.some((pr) => pr.number === prNumber),
+function filterWorkflowRuns(
+  workflowRuns,
+  prNumber,
+  excluded_runNumber,
+  excluded_runId,
+) {
+  const runs = workflowRuns.filter(
+    (run) =>
+      run.pull_requests.some((pr) => pr.number === prNumber) &&
+      run.run_number !== excluded_runNumber &&
+      run.id !== excluded_runId,
   );
 
   info(`Filtered runs: ${JSON.stringify(runs, null, 2)}`);
