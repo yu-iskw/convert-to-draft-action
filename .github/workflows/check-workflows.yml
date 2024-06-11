@@ -16,7 +16,15 @@ name: Test the action
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review, review_requested, auto_merge_enabled]
+    types:
+      [
+        opened,
+        synchronize,
+        reopened,
+        ready_for_review,
+        review_requested,
+        auto_merge_enabled,
+      ]
 
 jobs:
   check_workflows:

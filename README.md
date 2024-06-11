@@ -14,7 +14,15 @@ name: Convert PR to Draft
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review, review_requested, auto_merge_enabled]
+    types:
+      [
+        opened,
+        synchronize,
+        reopened,
+        ready_for_review,
+        review_requested,
+        auto_merge_enabled,
+      ]
 
 jobs:
   convert_to_draft:

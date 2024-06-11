@@ -122,7 +122,9 @@ async function convertPrToDraft(token, owner, repo, prNumber) {
   const pullRequestId = await getPullRequestId(octokit, owner, repo, prNumber);
 
   if (!pullRequestId) {
-    throw new Error(`Could not resolve to a node with the global id of '${prNumber}'`);
+    throw new Error(
+      `Could not resolve to a node with the global id of '${prNumber}'`,
+    );
   }
 
   const variables = {
@@ -146,7 +148,9 @@ async function getPullRequestId(octokit, owner, repo, prNumber) {
   });
 
   if (!pullRequest.data.node_id) {
-    throw new Error(`Could not resolve to a node with the global id of '${prNumber}'`);
+    throw new Error(
+      `Could not resolve to a node with the global id of '${prNumber}'`,
+    );
   }
 
   return pullRequest.data.node_id;
