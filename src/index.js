@@ -104,7 +104,7 @@ function filterWorkflowRuns(workflowRuns, prNumber, excludedRunId) {
 
 function hasFailedOrRunningWorkflows(runs) {
   return runs.some(
-    (run) => run.conclusion !== "success" || run.conclusion === null,
+    (run) => run.conclusion !== "completed" || run.conclusion === null,
   );
 }
 
