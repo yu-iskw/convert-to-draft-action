@@ -38938,9 +38938,7 @@ ${pendingInterceptorsFormatter.format(pending)}
           _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.payload
             .pull_request.head.sha;
 
-        (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
-          `Context: ${JSON.stringify(_actions_github__WEBPACK_IMPORTED_MODULE_1__.context, null, 2)}`,
-        );
+        // info(`Context: ${JSON.stringify(context, null, 2)}`);
         (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
           `PR Number: ${prNumber}`,
         );

@@ -28,7 +28,7 @@ async function run() {
     // Get the head SHA from the context
     const headSha = context.payload.pull_request.head?.sha;
 
-    info(`Context: ${JSON.stringify(context, null, 2)}`);
+    // info(`Context: ${JSON.stringify(context, null, 2)}`);
     info(`PR Number: ${prNumber}`);
     info(`Owner: ${owner}`);
     info(`Repo: ${repo}`);
