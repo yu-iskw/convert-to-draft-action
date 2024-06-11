@@ -96,19 +96,19 @@ async function convertPrToDraft(token, owner, repo, prNumber) {
 
   const octokit = getOctokit(token);
   const query = `
-    mutation($input: ConvertPullRequestToDraftInput!) {
-      convertPullRequestToDraft(input: $input) {
+    mutation($id: ID!) {
+      convertPullRequestToDraft(input: { pullRequestId: $id }) {
         pullRequest {
           id
+          number
+          isDraft
         }
       }
     }
   `;
 
   const variables = {
-    input: {
-      pullRequestId: await getPullRequestId(octokit, owner, repo, prNumber),
-    },
+    id: await getPullRequestId(octokit, owner, repo, prNumber),
   };
 
   const response = await octokit.graphql(query, variables);
