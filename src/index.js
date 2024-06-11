@@ -21,7 +21,6 @@ async function run() {
     const { number: prNumber } = context.payload.pull_request || {};
     const { owner, repo } = context.repo;
     const runNumber = context.runNumber;
-    const runId = context.runId;
 
     info(`PR Number: ${prNumber}`);
     info(`Owner: ${owner}`);
@@ -44,7 +43,7 @@ async function run() {
     }
 
     const workflowRuns = await fetchWorkflowRuns(token, owner, repo);
-    const runs = filterWorkflowRuns(workflowRuns, prNumber, runNumber, runId);
+    const runs = filterWorkflowRuns(workflowRuns, prNumber, runNumber);
 
     if (hasFailedOrRunningWorkflows(runs)) {
       await convertPrToDraft(token, owner, repo, prNumber);
@@ -90,17 +89,11 @@ async function fetchWorkflowRuns(token, owner, repo) {
   return data.workflow_runs;
 }
 
-function filterWorkflowRuns(
-  workflowRuns,
-  prNumber,
-  excluded_runNumber,
-  excluded_runId,
-) {
+function filterWorkflowRuns(workflowRuns, prNumber, excluded_runNumber) {
   const runs = workflowRuns.filter(
     (run) =>
       run.pull_requests.some((pr) => pr.number === prNumber) &&
-      run.run_number !== excluded_runNumber &&
-      run.id !== excluded_runId,
+      run.run_number !== excluded_runNumber,
   );
 
   info(`Filtered runs: ${JSON.stringify(runs, null, 2)}`);
