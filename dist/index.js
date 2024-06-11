@@ -38926,9 +38926,9 @@ ${pendingInterceptorsFormatter.format(pending)}
             .pull_request || {};
         const { owner, repo } =
           _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.repo;
-        const { number: runNumber } =
+        const runNumber =
           _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.runNumber;
-        const { number: runId } =
+        const runId =
           _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.runId;
 
         (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
@@ -38960,8 +38960,8 @@ ${pendingInterceptorsFormatter.format(pending)}
         const runs = filterWorkflowRuns(
           workflowRuns,
           prNumber,
-          excluded_runNumber,
-          excluded_runId,
+          runNumber,
+          runId,
         );
 
         if (hasFailedOrRunningWorkflows(runs)) {

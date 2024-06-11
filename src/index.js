@@ -20,8 +20,8 @@ async function run() {
     const token = getInput("GITHUB_TOKEN");
     const { number: prNumber } = context.payload.pull_request || {};
     const { owner, repo } = context.repo;
-    const { number: runNumber } = context.runNumber;
-    const { number: runId } = context.runId;
+    const runNumber = context.runNumber;
+    const runId = context.runId;
 
     info(`PR Number: ${prNumber}`);
     info(`Owner: ${owner}`);
@@ -44,12 +44,7 @@ async function run() {
     }
 
     const workflowRuns = await fetchWorkflowRuns(token, owner, repo);
-    const runs = filterWorkflowRuns(
-      workflowRuns,
-      prNumber,
-      excluded_runNumber,
-      excluded_runId,
-    );
+    const runs = filterWorkflowRuns(workflowRuns, prNumber, runNumber, runId);
 
     if (hasFailedOrRunningWorkflows(runs)) {
       await convertPrToDraft(token, owner, repo, prNumber);
