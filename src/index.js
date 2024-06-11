@@ -22,7 +22,7 @@ async function run() {
     const { owner, repo } = context.repo;
     const runId = context.runId;
     const workflow = context.workflow;
-    const headCommit = context.payload.headCommit.id;
+    const headSha = context.payload.headCommit.id;
 
     info(`Context: ${JSON.stringify(context, null, 2)}`);
     info(`PR Number: ${prNumber}`);
@@ -30,6 +30,7 @@ async function run() {
     info(`Repo: ${repo}`);
     info(`Run ID: ${runId}`);
     info(`Workflow: ${workflow}`);
+    info(`Head SHA: ${headSha}`);
 
     if (!prNumber) {
       throw new Error("Pull request number is undefined");
@@ -48,12 +49,7 @@ async function run() {
     }
 
     const workflowRuns = await fetchWorkflowRuns(token, owner, repo);
-    const runs = filterWorkflowRuns(
-      workflowRuns,
-      prNumber,
-      headCommit,
-      workflow,
-    );
+    const runs = filterWorkflowRuns(workflowRuns, prNumber, headSha, workflow);
 
     if (hasFailedOrRunningWorkflows(runs)) {
       await convertPrToDraft(token, owner, repo, prNumber);
@@ -99,11 +95,11 @@ async function fetchWorkflowRuns(token, owner, repo) {
   return data.workflow_runs;
 }
 
-function filterWorkflowRuns(workflowRuns, prNumber, headCommit, workflowName) {
+function filterWorkflowRuns(workflowRuns, prNumber, headSha, workflowName) {
   const runs = workflowRuns.filter(
     (run) =>
       run.pull_requests.some((pr) => pr.number === prNumber) &&
-      run.head_commit.id === headCommit &&
+      run.head_sha === headSha &&
       run.name !== workflowName,
   );
 

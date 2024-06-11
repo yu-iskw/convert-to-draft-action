@@ -38930,7 +38930,7 @@ ${pendingInterceptorsFormatter.format(pending)}
           _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.runId;
         const workflow =
           _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.workflow;
-        const headCommit =
+        const headSha =
           _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.payload
             .headCommit.id;
 
@@ -38947,6 +38947,9 @@ ${pendingInterceptorsFormatter.format(pending)}
         );
         (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
           `Workflow: ${workflow}`,
+        );
+        (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
+          `Head SHA: ${headSha}`,
         );
 
         if (!prNumber) {
@@ -38972,7 +38975,7 @@ ${pendingInterceptorsFormatter.format(pending)}
         const runs = filterWorkflowRuns(
           workflowRuns,
           prNumber,
-          headCommit,
+          headSha,
           workflow,
         );
 
@@ -39032,16 +39035,11 @@ ${pendingInterceptorsFormatter.format(pending)}
       return data.workflow_runs;
     }
 
-    function filterWorkflowRuns(
-      workflowRuns,
-      prNumber,
-      headCommit,
-      workflowName,
-    ) {
+    function filterWorkflowRuns(workflowRuns, prNumber, headSha, workflowName) {
       const runs = workflowRuns.filter(
         (run) =>
           run.pull_requests.some((pr) => pr.number === prNumber) &&
-          run.head_commit.id === headCommit &&
+          run.head_sha === headSha &&
           run.name !== workflowName,
       );
 
