@@ -20,13 +20,13 @@ async function run() {
     const token = getInput("GITHUB_TOKEN");
     const { number: prNumber } = context.payload.pull_request || {};
     const { owner, repo } = context.repo;
-    const workflowId = context.workflow.id;
+    const runId = context.runId;
 
     info(`Context: ${JSON.stringify(context, null, 2)}`);
     info(`PR Number: ${prNumber}`);
     info(`Owner: ${owner}`);
     info(`Repo: ${repo}`);
-    info(`Workflow ID: ${workflowId}`);
+    info(`Run ID: ${runId}`);
 
     if (!prNumber) {
       throw new Error("Pull request number is undefined");
@@ -45,7 +45,7 @@ async function run() {
     }
 
     const workflowRuns = await fetchWorkflowRuns(token, owner, repo);
-    const runs = filterWorkflowRuns(workflowRuns, prNumber, workflowId);
+    const runs = filterWorkflowRuns(workflowRuns, prNumber, runId);
 
     if (hasFailedOrRunningWorkflows(runs)) {
       await convertPrToDraft(token, owner, repo, prNumber);
@@ -91,11 +91,11 @@ async function fetchWorkflowRuns(token, owner, repo) {
   return data.workflow_runs;
 }
 
-function filterWorkflowRuns(workflowRuns, prNumber, excludedWorkflowId) {
+function filterWorkflowRuns(workflowRuns, prNumber, excludedRunId) {
   const runs = workflowRuns.filter(
     (run) =>
       run.pull_requests.some((pr) => pr.number === prNumber) &&
-      run.workflow_id !== excludedWorkflowId,
+      run.id !== excludedRunId,
   );
 
   info(`Filtered runs: ${JSON.stringify(runs, null, 2)}`);

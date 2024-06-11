@@ -38926,8 +38926,8 @@ ${pendingInterceptorsFormatter.format(pending)}
             .pull_request || {};
         const { owner, repo } =
           _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.repo;
-        const workflowId =
-          _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.workflow.id;
+        const runId =
+          _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.runId;
 
         (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
           `Context: ${JSON.stringify(_actions_github__WEBPACK_IMPORTED_MODULE_1__.context, null, 2)}`,
@@ -38938,7 +38938,7 @@ ${pendingInterceptorsFormatter.format(pending)}
         (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(`Owner: ${owner}`);
         (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(`Repo: ${repo}`);
         (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
-          `Workflow ID: ${workflowId}`,
+          `Run ID: ${runId}`,
         );
 
         if (!prNumber) {
@@ -38961,7 +38961,7 @@ ${pendingInterceptorsFormatter.format(pending)}
         }
 
         const workflowRuns = await fetchWorkflowRuns(token, owner, repo);
-        const runs = filterWorkflowRuns(workflowRuns, prNumber, workflowId);
+        const runs = filterWorkflowRuns(workflowRuns, prNumber, runId);
 
         if (hasFailedOrRunningWorkflows(runs)) {
           await convertPrToDraft(token, owner, repo, prNumber);
@@ -39019,11 +39019,11 @@ ${pendingInterceptorsFormatter.format(pending)}
       return data.workflow_runs;
     }
 
-    function filterWorkflowRuns(workflowRuns, prNumber, excludedWorkflowId) {
+    function filterWorkflowRuns(workflowRuns, prNumber, excludedRunId) {
       const runs = workflowRuns.filter(
         (run) =>
           run.pull_requests.some((pr) => pr.number === prNumber) &&
-          run.workflow_id !== excludedWorkflowId,
+          run.id !== excludedRunId,
       );
 
       (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
