@@ -100,8 +100,7 @@ function filterWorkflowRuns(workflowRuns, prNumber, headSha, workflowName) {
   const runs = workflowRuns.filter(
     (run) =>
       run.pull_requests.some((pr) => pr.number === prNumber) &&
-      run.head_sha === headSha &&
-      run.name !== workflowName,
+      run.head_sha === headSha,
   );
 
   info(`Filtered runs: ${JSON.stringify(runs, null, 2)}`);

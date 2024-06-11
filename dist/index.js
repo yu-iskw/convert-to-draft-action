@@ -39039,8 +39039,7 @@ ${pendingInterceptorsFormatter.format(pending)}
       const runs = workflowRuns.filter(
         (run) =>
           run.pull_requests.some((pr) => pr.number === prNumber) &&
-          run.head_sha === headSha &&
-          run.name !== workflowName,
+          run.head_sha === headSha,
       );
 
       (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
