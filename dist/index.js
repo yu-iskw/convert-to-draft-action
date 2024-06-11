@@ -33816,6 +33816,18 @@ async function run() {
       throw new Error("Pull request number is undefined");
     }
 
+    const octokit = (0,_actions_github__WEBPACK_IMPORTED_MODULE_1__.getOctokit)(token);
+    const { data: prData } = await octokit.rest.pulls.get({
+      owner,
+      repo,
+      pull_number: prNumber,
+    });
+
+    if (prData.draft) {
+      (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.info)("The pull request is already in draft status.");
+      return;
+    }
+
     const workflowRuns = await fetchWorkflowRuns(token, owner, repo);
     const runs = filterWorkflowRuns(workflowRuns, prNumber);
 
