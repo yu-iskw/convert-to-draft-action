@@ -31,8 +31,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions: write-all
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
       - name: Run custom action
         uses: ./
         with:

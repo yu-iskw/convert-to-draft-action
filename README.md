@@ -32,8 +32,6 @@ jobs:
       contents: read
       pull-requests: write
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
       - name: Convert PR to Draft
         uses: yu-iskw/convert-to-draft-action@v0.1.2
         with:
