@@ -26,10 +26,18 @@ on:
         auto_merge_enabled,
       ]
 
+concurrency:
+  # Group by pull request
+  group: ${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   check_workflows:
     runs-on: ubuntu-latest
     permissions: write-all
+    # If the event is a pull request and the pull request doesn't have the "disable-convert-to-draft" label,
+    # then the workflow will run.
+    if: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'disable-convert-to-draft') }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
