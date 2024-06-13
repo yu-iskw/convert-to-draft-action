@@ -31,6 +31,11 @@ jobs:
       actions: read
       contents: read
       pull-requests: write
+    # TIPS:
+    # If you want to support a by-pass not to convert to draft, the subsequent code is commented out.
+    # If the event is a pull request and the pull request doesn't have the "disable-convert-to-draft" label,
+    # then the workflow will run.
+    #if: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'disable-convert-to-draft') }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

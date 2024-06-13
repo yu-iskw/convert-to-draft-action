@@ -26,6 +26,11 @@ on:
         auto_merge_enabled,
       ]
 
+concurrency:
+  # Group by pull request
+  group: ${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   check_workflows:
     runs-on: ubuntu-latest
