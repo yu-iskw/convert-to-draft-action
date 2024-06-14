@@ -39008,18 +39008,13 @@ ${pendingInterceptorsFormatter.format(pending)}
         );
 
         // Fetch workflow jobs for the remaining workflow runs
-        const jobs = await fetchWorkflowJobs(
-          token,
-          owner,
-          repo,
-          workflowRunsExcludingCurrent,
-        );
+        const jobs = await fetchWorkflowJobs(token, owner, repo, workflowRuns);
 
         // Filter out the current workflow run using the head SHA
         const filteredJobs = jobs.filter((job) => job.head_sha !== headSha);
 
         // Convert the pull request to draft if any workflows failed or are still running
-        if (hasFailedOrRunningJobs(filteredJobs)) {
+        if (hasFailedOrRunningJobs()) {
           await convertPrToDraft(token, owner, repo, prNumber);
           // Leave a comment if the pull request is converted to draft and leave_comment is true
           if (leaveComment === "1") {
