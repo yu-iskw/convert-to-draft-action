@@ -82,12 +82,10 @@ async function run() {
     );
 
     // Filter out the current workflow run using the head SHA
-    const workflowRunsExcludingCurrent = workflowRuns.filter(
-      (run) => run.head_sha !== headSha,
-    );
+    const filteredJobs = jobs.filter((job) => job.head_sha !== headSha);
 
     // Convert the pull request to draft if any workflows failed or are still running
-    if (hasFailedOrRunningJobs(jobs)) {
+    if (hasFailedOrRunningJobs(filteredJobs)) {
       await convertPrToDraft(token, owner, repo, prNumber);
       // Leave a comment if the pull request is converted to draft and leave_comment is true
       if (leaveComment === "1") {
