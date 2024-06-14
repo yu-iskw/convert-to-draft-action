@@ -38934,6 +38934,7 @@ ${pendingInterceptorsFormatter.format(pending)}
             .pull_request || {};
         const { owner, repo } =
           _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.repo;
+        const jobId = _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.job;
         const runId =
           _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.runId;
         const workflow =
@@ -38943,12 +38944,17 @@ ${pendingInterceptorsFormatter.format(pending)}
           _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.payload
             .pull_request.head.sha;
 
-        // info(`Context: ${JSON.stringify(context, null, 2)}`);
+        (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
+          `Context: ${JSON.stringify(_actions_github__WEBPACK_IMPORTED_MODULE_1__.context, null, 2)}`,
+        );
         (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
           `PR Number: ${prNumber}`,
         );
         (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(`Owner: ${owner}`);
         (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(`Repo: ${repo}`);
+        (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
+          `Job ID: ${jobId}`,
+        );
         (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
           `Run ID: ${runId}`,
         );
@@ -38971,6 +38977,10 @@ ${pendingInterceptorsFormatter.format(pending)}
           pull_number: prNumber,
         });
 
+        (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
+          `Pull Request Data: ${JSON.stringify(prData, null, 2)}`,
+        );
+
         if (prData.draft) {
           (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
             "The pull request is already in draft status.",
@@ -38978,16 +38988,29 @@ ${pendingInterceptorsFormatter.format(pending)}
           return;
         }
 
-        const workflowRuns = await fetchWorkflowRuns(token, owner, repo);
-        const runs = filterWorkflowRuns(
-          workflowRuns,
-          prNumber,
+        // Fetch workflow runs
+        const workflowRuns = await fetchWorkflowRuns(
+          token,
+          owner,
+          repo,
           headSha,
-          workflow,
+        );
+
+        // Exclude the current workflow run
+        const workflowRunsExcludingCurrent = workflowRuns.filter(
+          (run) => run.id !== runId,
+        );
+
+        // Fetch workflow jobs
+        const jobs = await fetchWorkflowJobs(
+          token,
+          owner,
+          repo,
+          workflowRunsExcludingCurrent,
         );
 
         // Convert the PR to draft if some workflows failed or are still running
-        if (hasFailedOrRunningWorkflows(runs)) {
+        if (hasFailedOrRunningJobs(jobs)) {
           await convertPrToDraft(token, owner, repo, prNumber);
           // Leave a comment if the PR is converted to draft and leave_comment is true
           if (leaveComment === "1") {
@@ -39011,9 +39034,9 @@ ${pendingInterceptorsFormatter.format(pending)}
       }
     }
 
-    async function fetchWorkflowRuns(token, owner, repo) {
+    async function fetchWorkflowRuns(token, owner, repo, headSha) {
       const response = await fetch(
-        `https://api.github.com/repos/${owner}/${repo}/actions/runs?event=pull_request`,
+        `https://api.github.com/repos/${owner}/${repo}/actions/runs?head_sha=${headSha}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -39044,6 +39067,9 @@ ${pendingInterceptorsFormatter.format(pending)}
       (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
         `Workflow runs by status: ${JSON.stringify(workflowStatuses, null, 2)}`,
       );
+      (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
+        `Workflow runs details: ${JSON.stringify(data.workflow_runs, null, 2)}`,
+      );
 
       if (!data.workflow_runs) {
         throw new Error("workflow_runs is undefined");
@@ -39052,24 +39078,50 @@ ${pendingInterceptorsFormatter.format(pending)}
       return data.workflow_runs;
     }
 
-    function filterWorkflowRuns(workflowRuns, prNumber, headSha, workflowName) {
-      const runs = workflowRuns.filter(
-        (run) =>
-          run.pull_requests.some((pr) => pr.number === prNumber) &&
-          run.head_sha === headSha &&
-          run.name !== workflowName,
-      );
+    async function fetchWorkflowJobs(token, owner, repo, workflowRuns) {
+      const jobs = [];
+      for (const run of workflowRuns) {
+        const response = await fetch(
+          `https://api.github.com/repos/${owner}/${repo}/actions/runs/${run.id}/jobs`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              Accept: "application/vnd.github.v3+json",
+            },
+          },
+        );
+
+        (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
+          `Fetch jobs result status: ${response.status}`,
+        );
+
+        if (!response.ok) {
+          throw new Error(
+            `Failed to fetch workflow jobs: ${response.statusText}`,
+          );
+        }
+
+        const data = await response.json();
+        jobs.push(...data.jobs);
+      }
 
       (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
-        `Filtered runs: ${JSON.stringify(runs, null, 2)}`,
+        `Total jobs fetched: ${jobs.length}`,
       );
-      return runs;
+      (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
+        `Jobs details: ${JSON.stringify(jobs, null, 2)}`,
+      );
+      return jobs;
     }
 
-    function hasFailedOrRunningWorkflows(runs) {
-      return runs.some(
-        (run) => run.conclusion !== "success" || run.conclusion === null,
+    function hasFailedOrRunningJobs(jobs) {
+      const failedOrRunningJobs = jobs.filter(
+        (job) => job.conclusion !== "success" || job.conclusion === null,
       );
+      (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
+        `Failed or running jobs: ${JSON.stringify(failedOrRunningJobs, null, 2)}`,
+      );
+      return failedOrRunningJobs.length > 0;
     }
 
     async function convertPrToDraft(token, owner, repo, prNumber) {
@@ -39117,6 +39169,9 @@ ${pendingInterceptorsFormatter.format(pending)}
       (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
         "Pull request successfully converted to draft.",
       );
+      (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
+        `Draft conversion response: ${JSON.stringify(response, null, 2)}`,
+      );
     }
 
     async function getPullRequestId(octokit, owner, repo, prNumber) {
@@ -39132,6 +39187,9 @@ ${pendingInterceptorsFormatter.format(pending)}
         );
       }
 
+      (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
+        `Pull Request ID: ${pullRequest.data.node_id}`,
+      );
       return pullRequest.data.node_id;
     }
 

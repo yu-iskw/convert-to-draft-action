@@ -26,15 +26,17 @@ async function run() {
 
     const { number: prNumber } = context.payload.pull_request || {};
     const { owner, repo } = context.repo;
+    const jobId = context.job;
     const runId = context.runId;
     const workflow = context.workflow;
     // Get the head SHA from the context
     const headSha = context.payload.pull_request.head?.sha;
 
-    // info(`Context: ${JSON.stringify(context, null, 2)}`);
+    info(`Context: ${JSON.stringify(context, null, 2)}`);
     info(`PR Number: ${prNumber}`);
     info(`Owner: ${owner}`);
     info(`Repo: ${repo}`);
+    info(`Job ID: ${jobId}`);
     info(`Run ID: ${runId}`);
     info(`Workflow: ${workflow}`);
     info(`Head SHA: ${headSha}`);
@@ -50,16 +52,31 @@ async function run() {
       pull_number: prNumber,
     });
 
+    info(`Pull Request Data: ${JSON.stringify(prData, null, 2)}`);
+
     if (prData.draft) {
       info("The pull request is already in draft status.");
       return;
     }
 
-    const workflowRuns = await fetchWorkflowRuns(token, owner, repo);
-    const runs = filterWorkflowRuns(workflowRuns, prNumber, headSha, workflow);
+    // Fetch workflow runs
+    const workflowRuns = await fetchWorkflowRuns(token, owner, repo, headSha);
+
+    // Exclude the current workflow run
+    const workflowRunsExcludingCurrent = workflowRuns.filter(
+      (run) => run.id !== runId,
+    );
+
+    // Fetch workflow jobs
+    const jobs = await fetchWorkflowJobs(
+      token,
+      owner,
+      repo,
+      workflowRunsExcludingCurrent,
+    );
 
     // Convert the PR to draft if some workflows failed or are still running
-    if (hasFailedOrRunningWorkflows(runs)) {
+    if (hasFailedOrRunningJobs(jobs)) {
       await convertPrToDraft(token, owner, repo, prNumber);
       // Leave a comment if the PR is converted to draft and leave_comment is true
       if (leaveComment === "1") {
@@ -73,9 +90,9 @@ async function run() {
   }
 }
 
-async function fetchWorkflowRuns(token, owner, repo) {
+async function fetchWorkflowRuns(token, owner, repo, headSha) {
   const response = await fetch(
-    `https://api.github.com/repos/${owner}/${repo}/actions/runs?event=pull_request`,
+    `https://api.github.com/repos/${owner}/${repo}/actions/runs?head_sha=${headSha}`,
     {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -98,6 +115,7 @@ async function fetchWorkflowRuns(token, owner, repo) {
 
   info(`Workflow runs data: ${data.workflow_runs.length} runs found`);
   info(`Workflow runs by status: ${JSON.stringify(workflowStatuses, null, 2)}`);
+  info(`Workflow runs details: ${JSON.stringify(data.workflow_runs, null, 2)}`);
 
   if (!data.workflow_runs) {
     throw new Error("workflow_runs is undefined");
@@ -106,22 +124,42 @@ async function fetchWorkflowRuns(token, owner, repo) {
   return data.workflow_runs;
 }
 
-function filterWorkflowRuns(workflowRuns, prNumber, headSha, workflowName) {
-  const runs = workflowRuns.filter(
-    (run) =>
-      run.pull_requests.some((pr) => pr.number === prNumber) &&
-      run.head_sha === headSha &&
-      run.name !== workflowName,
-  );
+async function fetchWorkflowJobs(token, owner, repo, workflowRuns) {
+  const jobs = [];
+  for (const run of workflowRuns) {
+    const response = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/actions/runs/${run.id}/jobs`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github.v3+json",
+        },
+      },
+    );
 
-  info(`Filtered runs: ${JSON.stringify(runs, null, 2)}`);
-  return runs;
+    info(`Fetch jobs result status: ${response.status}`);
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch workflow jobs: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    jobs.push(...data.jobs);
+  }
+
+  info(`Total jobs fetched: ${jobs.length}`);
+  info(`Jobs details: ${JSON.stringify(jobs, null, 2)}`);
+  return jobs;
 }
 
-function hasFailedOrRunningWorkflows(runs) {
-  return runs.some(
-    (run) => run.conclusion !== "success" || run.conclusion === null,
+function hasFailedOrRunningJobs(jobs) {
+  const failedOrRunningJobs = jobs.filter(
+    (job) => job.conclusion !== "success" || job.conclusion === null,
   );
+  info(
+    `Failed or running jobs: ${JSON.stringify(failedOrRunningJobs, null, 2)}`,
+  );
+  return failedOrRunningJobs.length > 0;
 }
 
 async function convertPrToDraft(token, owner, repo, prNumber) {
@@ -159,6 +197,7 @@ async function convertPrToDraft(token, owner, repo, prNumber) {
   }
 
   info("Pull request successfully converted to draft.");
+  info(`Draft conversion response: ${JSON.stringify(response, null, 2)}`);
 }
 
 async function getPullRequestId(octokit, owner, repo, prNumber) {
@@ -174,6 +213,7 @@ async function getPullRequestId(octokit, owner, repo, prNumber) {
     );
   }
 
+  info(`Pull Request ID: ${pullRequest.data.node_id}`);
   return pullRequest.data.node_id;
 }
 
