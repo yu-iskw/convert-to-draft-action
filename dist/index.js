@@ -38988,13 +38988,26 @@ ${pendingInterceptorsFormatter.format(pending)}
           return;
         }
 
+        // Fetch workflow runs
         const workflowRuns = await fetchWorkflowRuns(
           token,
           owner,
           repo,
           headSha,
         );
-        const jobs = await fetchWorkflowJobs(token, owner, repo, workflowRuns);
+
+        // Exclude the current workflow run
+        const workflowRunsExcludingCurrent = workflowRuns.filter(
+          (run) => run.id !== runId,
+        );
+
+        // Fetch workflow jobs
+        const jobs = await fetchWorkflowJobs(
+          token,
+          owner,
+          repo,
+          workflowRunsExcludingCurrent,
+        );
 
         // Convert the PR to draft if some workflows failed or are still running
         if (hasFailedOrRunningJobs(jobs)) {
