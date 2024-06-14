@@ -76,8 +76,8 @@ async function run() {
     // Fetch workflow jobs for the remaining workflow runs
     const jobs = await fetchWorkflowJobs(token, owner, repo, workflowRuns);
 
-    // Filter out the current workflow run using the head SHA
-    const filteredJobs = jobs.filter((job) => job.head_sha === headSha);
+    // Filter out the current workflow jobs using the run ID
+    const filteredJobs = jobs.filter((job) => job.run_id !== runId);
 
     // Convert the pull request to draft if any workflows failed or are still running
     if (hasFailedOrRunningJobs(filteredJobs)) {
