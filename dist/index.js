@@ -38944,12 +38944,17 @@ ${pendingInterceptorsFormatter.format(pending)}
           _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.payload
             .pull_request.head.sha;
 
-        // info(`Context: ${JSON.stringify(context, null, 2)}`);
+        (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
+          `Context: ${JSON.stringify(_actions_github__WEBPACK_IMPORTED_MODULE_1__.context, null, 2)}`,
+        );
         (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
           `PR Number: ${prNumber}`,
         );
         (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(`Owner: ${owner}`);
         (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(`Repo: ${repo}`);
+        (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
+          `Job ID: ${jobId}`,
+        );
         (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
           `Run ID: ${runId}`,
         );
@@ -38971,6 +38976,10 @@ ${pendingInterceptorsFormatter.format(pending)}
           repo,
           pull_number: prNumber,
         });
+
+        (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
+          `Pull Request Data: ${JSON.stringify(prData, null, 2)}`,
+        );
 
         if (prData.draft) {
           (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
@@ -39045,6 +39054,9 @@ ${pendingInterceptorsFormatter.format(pending)}
       (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
         `Workflow runs by status: ${JSON.stringify(workflowStatuses, null, 2)}`,
       );
+      (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
+        `Workflow runs details: ${JSON.stringify(data.workflow_runs, null, 2)}`,
+      );
 
       if (!data.workflow_runs) {
         throw new Error("workflow_runs is undefined");
@@ -39083,13 +39095,20 @@ ${pendingInterceptorsFormatter.format(pending)}
       (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
         `Total jobs fetched: ${jobs.length}`,
       );
+      (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
+        `Jobs details: ${JSON.stringify(jobs, null, 2)}`,
+      );
       return jobs;
     }
 
     function hasFailedOrRunningJobs(jobs) {
-      return jobs.some(
+      const failedOrRunningJobs = jobs.filter(
         (job) => job.conclusion !== "success" || job.conclusion === null,
       );
+      (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
+        `Failed or running jobs: ${JSON.stringify(failedOrRunningJobs, null, 2)}`,
+      );
+      return failedOrRunningJobs.length > 0;
     }
 
     async function convertPrToDraft(token, owner, repo, prNumber) {
@@ -39137,6 +39156,9 @@ ${pendingInterceptorsFormatter.format(pending)}
       (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
         "Pull request successfully converted to draft.",
       );
+      (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
+        `Draft conversion response: ${JSON.stringify(response, null, 2)}`,
+      );
     }
 
     async function getPullRequestId(octokit, owner, repo, prNumber) {
@@ -39152,6 +39174,9 @@ ${pendingInterceptorsFormatter.format(pending)}
         );
       }
 
+      (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
+        `Pull Request ID: ${pullRequest.data.node_id}`,
+      );
       return pullRequest.data.node_id;
     }
 

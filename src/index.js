@@ -32,10 +32,11 @@ async function run() {
     // Get the head SHA from the context
     const headSha = context.payload.pull_request.head?.sha;
 
-    // info(`Context: ${JSON.stringify(context, null, 2)}`);
+    info(`Context: ${JSON.stringify(context, null, 2)}`);
     info(`PR Number: ${prNumber}`);
     info(`Owner: ${owner}`);
     info(`Repo: ${repo}`);
+    info(`Job ID: ${jobId}`);
     info(`Run ID: ${runId}`);
     info(`Workflow: ${workflow}`);
     info(`Head SHA: ${headSha}`);
@@ -50,6 +51,8 @@ async function run() {
       repo,
       pull_number: prNumber,
     });
+
+    info(`Pull Request Data: ${JSON.stringify(prData, null, 2)}`);
 
     if (prData.draft) {
       info("The pull request is already in draft status.");
@@ -99,6 +102,7 @@ async function fetchWorkflowRuns(token, owner, repo, headSha) {
 
   info(`Workflow runs data: ${data.workflow_runs.length} runs found`);
   info(`Workflow runs by status: ${JSON.stringify(workflowStatuses, null, 2)}`);
+  info(`Workflow runs details: ${JSON.stringify(data.workflow_runs, null, 2)}`);
 
   if (!data.workflow_runs) {
     throw new Error("workflow_runs is undefined");
@@ -131,13 +135,18 @@ async function fetchWorkflowJobs(token, owner, repo, workflowRuns) {
   }
 
   info(`Total jobs fetched: ${jobs.length}`);
+  info(`Jobs details: ${JSON.stringify(jobs, null, 2)}`);
   return jobs;
 }
 
 function hasFailedOrRunningJobs(jobs) {
-  return jobs.some(
+  const failedOrRunningJobs = jobs.filter(
     (job) => job.conclusion !== "success" || job.conclusion === null,
   );
+  info(
+    `Failed or running jobs: ${JSON.stringify(failedOrRunningJobs, null, 2)}`,
+  );
+  return failedOrRunningJobs.length > 0;
 }
 
 async function convertPrToDraft(token, owner, repo, prNumber) {
@@ -175,6 +184,7 @@ async function convertPrToDraft(token, owner, repo, prNumber) {
   }
 
   info("Pull request successfully converted to draft.");
+  info(`Draft conversion response: ${JSON.stringify(response, null, 2)}`);
 }
 
 async function getPullRequestId(octokit, owner, repo, prNumber) {
@@ -190,6 +200,7 @@ async function getPullRequestId(octokit, owner, repo, prNumber) {
     );
   }
 
+  info(`Pull Request ID: ${pullRequest.data.node_id}`);
   return pullRequest.data.node_id;
 }
 
