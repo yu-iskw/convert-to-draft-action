@@ -39007,17 +39007,17 @@ ${pendingInterceptorsFormatter.format(pending)}
           headSha,
         );
 
-        // Exclude the current workflow run from the list
-        const workflowRunsExcludingCurrent = workflowRuns.filter(
-          (run) => run.id !== runId,
-        );
-
         // Fetch workflow jobs for the remaining workflow runs
         const jobs = await fetchWorkflowJobs(
           token,
           owner,
           repo,
           workflowRunsExcludingCurrent,
+        );
+
+        // Filter out the current workflow run using the head SHA
+        const workflowRunsExcludingCurrent = workflowRuns.filter(
+          (run) => run.head_sha !== headSha,
         );
 
         // Convert the pull request to draft if any workflows failed or are still running
