@@ -73,21 +73,14 @@ async function run() {
     // Fetch workflow runs associated with the pull request
     const workflowRuns = await fetchWorkflowRuns(token, owner, repo, headSha);
 
-    // Exclude the current workflow run from the list
-    const workflowRunsExcludingCurrent = workflowRuns.filter(
-      (run) => run.id !== runId,
-    );
-
     // Fetch workflow jobs for the remaining workflow runs
-    const jobs = await fetchWorkflowJobs(
-      token,
-      owner,
-      repo,
-      workflowRunsExcludingCurrent,
-    );
+    const jobs = await fetchWorkflowJobs(token, owner, repo, workflowRuns);
+
+    // Filter out the current workflow run using the head SHA
+    const filteredJobs = jobs.filter((job) => job.head_sha !== headSha);
 
     // Convert the pull request to draft if any workflows failed or are still running
-    if (hasFailedOrRunningJobs(jobs)) {
+    if (hasFailedOrRunningJobs(filteredJobs)) {
       await convertPrToDraft(token, owner, repo, prNumber);
       // Leave a comment if the pull request is converted to draft and leave_comment is true
       if (leaveComment === "1") {
