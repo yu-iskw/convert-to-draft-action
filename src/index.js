@@ -24,14 +24,20 @@ async function run() {
     const leaveComment = getInput("leave_comment");
     const commentBody = getInput("comment_body");
 
+    // Extract pull request number from the context payload
     const { number: prNumber } = context.payload.pull_request || {};
+    // Extract repository owner and name from the context
     const { owner, repo } = context.repo;
+    // Extract job ID from the context
     const jobId = context.job;
+    // Extract run ID from the context
     const runId = context.runId;
+    // Extract workflow name from the context
     const workflow = context.workflow;
     // Get the head SHA from the context
     const headSha = context.payload.pull_request.head?.sha;
 
+    // Log context information for debugging
     info(`Context: ${JSON.stringify(context, null, 2)}`);
     info(`PR Number: ${prNumber}`);
     info(`Owner: ${owner}`);
@@ -41,33 +47,38 @@ async function run() {
     info(`Workflow: ${workflow}`);
     info(`Head SHA: ${headSha}`);
 
+    // Check if pull request number is defined
     if (!prNumber) {
       throw new Error("Pull request number is undefined");
     }
 
+    // Initialize Octokit with the provided token
     const octokit = getOctokit(token);
+    // Fetch pull request data from GitHub
     const { data: prData } = await octokit.rest.pulls.get({
       owner,
       repo,
       pull_number: prNumber,
     });
 
+    // Log pull request data for debugging
     info(`Pull Request Data: ${JSON.stringify(prData, null, 2)}`);
 
+    // Check if the pull request is already in draft status
     if (prData.draft) {
       info("The pull request is already in draft status.");
       return;
     }
 
-    // Fetch workflow runs
+    // Fetch workflow runs associated with the pull request
     const workflowRuns = await fetchWorkflowRuns(token, owner, repo, headSha);
 
-    // Exclude the current workflow run
+    // Exclude the current workflow run from the list
     const workflowRunsExcludingCurrent = workflowRuns.filter(
       (run) => run.id !== runId,
     );
 
-    // Fetch workflow jobs
+    // Fetch workflow jobs for the remaining workflow runs
     const jobs = await fetchWorkflowJobs(
       token,
       owner,
@@ -75,10 +86,10 @@ async function run() {
       workflowRunsExcludingCurrent,
     );
 
-    // Convert the PR to draft if some workflows failed or are still running
+    // Convert the pull request to draft if any workflows failed or are still running
     if (hasFailedOrRunningJobs(jobs)) {
       await convertPrToDraft(token, owner, repo, prNumber);
-      // Leave a comment if the PR is converted to draft and leave_comment is true
+      // Leave a comment if the pull request is converted to draft and leave_comment is true
       if (leaveComment === "1") {
         await leaveCommentIfDraft(token, owner, repo, prNumber, commentBody);
       }
@@ -86,11 +97,16 @@ async function run() {
       info("All workflows passed.");
     }
   } catch (error) {
+    // Set the action as failed if an error occurs
     setFailed(error.message);
   }
 }
 
 async function fetchWorkflowRuns(token, owner, repo, headSha) {
+  /**
+   * NOTE: We can't determine if a workflow run is a part of a skipped workflow job.
+   *       So, we need to fetch workflow jobs by workflow runs and check if the job is skipped.
+   */
   const response = await fetch(
     `https://api.github.com/repos/${owner}/${repo}/actions/runs?head_sha=${headSha}`,
     {

@@ -38929,14 +38929,19 @@ ${pendingInterceptorsFormatter.format(pending)}
         const commentBody = (0,
         _actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput)("comment_body");
 
+        // Extract pull request number from the context payload
         const { number: prNumber } =
           _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.payload
             .pull_request || {};
+        // Extract repository owner and name from the context
         const { owner, repo } =
           _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.repo;
+        // Extract job ID from the context
         const jobId = _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.job;
+        // Extract run ID from the context
         const runId =
           _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.runId;
+        // Extract workflow name from the context
         const workflow =
           _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.workflow;
         // Get the head SHA from the context
@@ -38944,6 +38949,7 @@ ${pendingInterceptorsFormatter.format(pending)}
           _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.payload
             .pull_request.head.sha;
 
+        // Log context information for debugging
         (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
           `Context: ${JSON.stringify(_actions_github__WEBPACK_IMPORTED_MODULE_1__.context, null, 2)}`,
         );
@@ -38965,22 +38971,27 @@ ${pendingInterceptorsFormatter.format(pending)}
           `Head SHA: ${headSha}`,
         );
 
+        // Check if pull request number is defined
         if (!prNumber) {
           throw new Error("Pull request number is undefined");
         }
 
+        // Initialize Octokit with the provided token
         const octokit = (0,
         _actions_github__WEBPACK_IMPORTED_MODULE_1__.getOctokit)(token);
+        // Fetch pull request data from GitHub
         const { data: prData } = await octokit.rest.pulls.get({
           owner,
           repo,
           pull_number: prNumber,
         });
 
+        // Log pull request data for debugging
         (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
           `Pull Request Data: ${JSON.stringify(prData, null, 2)}`,
         );
 
+        // Check if the pull request is already in draft status
         if (prData.draft) {
           (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
             "The pull request is already in draft status.",
@@ -38988,7 +38999,7 @@ ${pendingInterceptorsFormatter.format(pending)}
           return;
         }
 
-        // Fetch workflow runs
+        // Fetch workflow runs associated with the pull request
         const workflowRuns = await fetchWorkflowRuns(
           token,
           owner,
@@ -38996,12 +39007,12 @@ ${pendingInterceptorsFormatter.format(pending)}
           headSha,
         );
 
-        // Exclude the current workflow run
+        // Exclude the current workflow run from the list
         const workflowRunsExcludingCurrent = workflowRuns.filter(
           (run) => run.id !== runId,
         );
 
-        // Fetch workflow jobs
+        // Fetch workflow jobs for the remaining workflow runs
         const jobs = await fetchWorkflowJobs(
           token,
           owner,
@@ -39009,10 +39020,10 @@ ${pendingInterceptorsFormatter.format(pending)}
           workflowRunsExcludingCurrent,
         );
 
-        // Convert the PR to draft if some workflows failed or are still running
+        // Convert the pull request to draft if any workflows failed or are still running
         if (hasFailedOrRunningJobs(jobs)) {
           await convertPrToDraft(token, owner, repo, prNumber);
-          // Leave a comment if the PR is converted to draft and leave_comment is true
+          // Leave a comment if the pull request is converted to draft and leave_comment is true
           if (leaveComment === "1") {
             await leaveCommentIfDraft(
               token,
@@ -39028,6 +39039,7 @@ ${pendingInterceptorsFormatter.format(pending)}
           );
         }
       } catch (error) {
+        // Set the action as failed if an error occurs
         (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.setFailed)(
           error.message,
         );
@@ -39035,6 +39047,10 @@ ${pendingInterceptorsFormatter.format(pending)}
     }
 
     async function fetchWorkflowRuns(token, owner, repo, headSha) {
+      /**
+       * NOTE: We can't determine if a workflow run is a part of a skipped workflow job.
+       *       So, we need to fetch workflow jobs by workflow runs and check if the job is skipped.
+       */
       const response = await fetch(
         `https://api.github.com/repos/${owner}/${repo}/actions/runs?head_sha=${headSha}`,
         {
