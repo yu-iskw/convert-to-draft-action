@@ -1,0 +1,12 @@
+name: Failed workflow
+
+on:
+  pull_request:
+
+jobs:
+  failed-jobs:
+    strategy:
+      # No jobs will be run if the workflow is not triggered by a pull request
+      # trunk-ignore(actionlint/syntax-check)
+      matrix: {}
+    uses: ./.github/workflows/_reusable_failed_workflow.yml

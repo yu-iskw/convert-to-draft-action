@@ -1,0 +1,12 @@
+name: Reusable failed workflow
+
+on:
+  workflow_call: {}
+
+jobs:
+  failed-job:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "Failed job"
+          exit 1

@@ -26,6 +26,7 @@ async function run() {
 
     const { number: prNumber } = context.payload.pull_request || {};
     const { owner, repo } = context.repo;
+    const jobId = context.job;
     const runId = context.runId;
     const workflow = context.workflow;
     // Get the head SHA from the context
@@ -55,11 +56,11 @@ async function run() {
       return;
     }
 
-    const workflowRuns = await fetchWorkflowRuns(token, owner, repo);
-    const runs = filterWorkflowRuns(workflowRuns, prNumber, headSha, workflow);
+    const workflowRuns = await fetchWorkflowRuns(token, owner, repo, headSha);
+    const jobs = await fetchWorkflowJobs(token, owner, repo, workflowRuns);
 
     // Convert the PR to draft if some workflows failed or are still running
-    if (hasFailedOrRunningWorkflows(runs)) {
+    if (hasFailedOrRunningJobs(jobs)) {
       await convertPrToDraft(token, owner, repo, prNumber);
       // Leave a comment if the PR is converted to draft and leave_comment is true
       if (leaveComment === "1") {
@@ -73,9 +74,9 @@ async function run() {
   }
 }
 
-async function fetchWorkflowRuns(token, owner, repo) {
+async function fetchWorkflowRuns(token, owner, repo, headSha) {
   const response = await fetch(
-    `https://api.github.com/repos/${owner}/${repo}/actions/runs?event=pull_request`,
+    `https://api.github.com/repos/${owner}/${repo}/actions/runs?head_sha=${headSha}`,
     {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -106,21 +107,36 @@ async function fetchWorkflowRuns(token, owner, repo) {
   return data.workflow_runs;
 }
 
-function filterWorkflowRuns(workflowRuns, prNumber, headSha, workflowName) {
-  const runs = workflowRuns.filter(
-    (run) =>
-      run.pull_requests.some((pr) => pr.number === prNumber) &&
-      run.head_sha === headSha &&
-      run.name !== workflowName,
-  );
+async function fetchWorkflowJobs(token, owner, repo, workflowRuns) {
+  const jobs = [];
+  for (const run of workflowRuns) {
+    const response = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/actions/runs/${run.id}/jobs`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github.v3+json",
+        },
+      },
+    );
 
-  info(`Filtered runs: ${JSON.stringify(runs, null, 2)}`);
-  return runs;
+    info(`Fetch jobs result status: ${response.status}`);
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch workflow jobs: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    jobs.push(...data.jobs);
+  }
+
+  info(`Total jobs fetched: ${jobs.length}`);
+  return jobs;
 }
 
-function hasFailedOrRunningWorkflows(runs) {
-  return runs.some(
-    (run) => run.conclusion !== "success" || run.conclusion === null,
+function hasFailedOrRunningJobs(jobs) {
+  return jobs.some(
+    (job) => job.conclusion !== "success" || job.conclusion === null,
   );
 }
 
