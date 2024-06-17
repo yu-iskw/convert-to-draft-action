@@ -15,6 +15,12 @@
 import { getInput, info, setFailed } from "@actions/core";
 import { context, getOctokit } from "@actions/github";
 
+/**
+ * References:
+ * - https://docs.github.com/en/rest/actions/workflow-runs?apiVersion=2022-11-28#list-workflow-runs-for-a-repository
+ * - https://docs.github.com/en/rest/actions/workflow-jobs?apiVersion=2022-11-28#get-a-job-for-a-workflow-run
+ */
+
 async function run() {
   try {
     // Sleep 5 seconds to make sure other workflows are triggered
@@ -25,7 +31,7 @@ async function run() {
     const commentBody = getInput("comment_body");
 
     // Extract pull request number from the context payload
-    const { number: prNumber } = context.payload.pull_request || {};
+    const prNumber = context.payload.pull_request?.number;
     // Extract repository owner and name from the context
     const { owner, repo } = context.repo;
     // Extract job ID from the context
@@ -35,7 +41,7 @@ async function run() {
     // Extract workflow name from the context
     const workflow = context.workflow;
     // Get the head SHA from the context
-    const headSha = context.payload.pull_request.head?.sha;
+    const headSha = context.payload.pull_request?.head?.sha;
 
     // Log context information for debugging
     info(`Context: ${JSON.stringify(context, null, 2)}`);
@@ -72,6 +78,16 @@ async function run() {
 
     // Fetch workflow runs associated with the pull request
     const workflowRuns = await fetchWorkflowRuns(token, owner, repo, headSha);
+
+    // If there is any running workflow run, convert the pull request to draft
+    // to reduce unnecessary API calls.
+    if (workflowRuns.some((run) => run.status !== "completed")) {
+      await convertPrToDraft(token, owner, repo, prNumber);
+      throw new Error("A workflow run is currently in progress");
+    }
+
+    // Only if there is any failed workflow run, then check if their workflows jobs are truly failed
+    // because it is impossible to know if the failed jobs are skipped or not.
 
     // Fetch workflow jobs for the remaining workflow runs
     const jobs = await fetchWorkflowJobs(token, owner, repo, workflowRuns);

@@ -38916,6 +38916,12 @@ ${pendingInterceptorsFormatter.format(pending)}
     // See the License for the specific language governing permissions and
     // limitations under the License.
 
+    /**
+     * References:
+     * - https://docs.github.com/en/rest/actions/workflow-runs?apiVersion=2022-11-28#list-workflow-runs-for-a-repository
+     * - https://docs.github.com/en/rest/actions/workflow-jobs?apiVersion=2022-11-28#get-a-job-for-a-workflow-run
+     */
+
     async function run() {
       try {
         // Sleep 5 seconds to make sure other workflows are triggered
@@ -38930,9 +38936,9 @@ ${pendingInterceptorsFormatter.format(pending)}
         _actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput)("comment_body");
 
         // Extract pull request number from the context payload
-        const { number: prNumber } =
+        const prNumber =
           _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.payload
-            .pull_request || {};
+            .pull_request.number;
         // Extract repository owner and name from the context
         const { owner, repo } =
           _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.repo;
@@ -39006,6 +39012,16 @@ ${pendingInterceptorsFormatter.format(pending)}
           repo,
           headSha,
         );
+
+        // If there is any running workflow run, convert the pull request to draft
+        // to reduce unnecessary API calls.
+        if (workflowRuns.some((run) => run.status !== "completed")) {
+          await convertPrToDraft(token, owner, repo, prNumber);
+          throw new Error("A workflow run is currently in progress");
+        }
+
+        // Only if there is any failed workflow run, then check if their workflows jobs are truly failed
+        // because it is impossible to know if the failed jobs are skipped or not.
 
         // Fetch workflow jobs for the remaining workflow runs
         const jobs = await fetchWorkflowJobs(token, owner, repo, workflowRuns);
