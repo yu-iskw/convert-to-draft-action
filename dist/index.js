@@ -39018,8 +39018,10 @@ ${pendingInterceptorsFormatter.format(pending)}
 
         // If there is any running workflow run, convert the pull request to draft
         if (runningWorkflowRuns.length > 0) {
+          (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
+            "Any workflow run is not completed",
+          );
           await convertPrToDraft(token, owner, repo, prNumber);
-          throw new Error("Any workflow run is not completed");
         }
 
         // Only if there is any failed workflow run, then check if their workflows jobs are truly failed
