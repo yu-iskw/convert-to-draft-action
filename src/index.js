@@ -81,9 +81,11 @@ async function run() {
 
     // If there is any running workflow run, convert the pull request to draft
     // to reduce unnecessary API calls.
-    if (workflowRuns.some((run) => run.status !== "completed")) {
+    if (
+      workflowRuns.some((run) => run.status !== "completed" && run.id !== runId)
+    ) {
       await convertPrToDraft(token, owner, repo, prNumber);
-      throw new Error("A workflow run is currently in progress");
+      throw new Error("Any workflow run is not completed");
     }
 
     // Only if there is any failed workflow run, then check if their workflows jobs are truly failed
