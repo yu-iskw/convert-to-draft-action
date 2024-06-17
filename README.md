@@ -24,6 +24,12 @@ on:
         auto_merge_enabled,
       ]
 
+# If you want to cancel the previous workflow if a new one is triggered, use the following concurrency setting.
+concurrency:
+  # Group by pull request
+  group: ${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   convert_to_draft:
     runs-on: ubuntu-latest
