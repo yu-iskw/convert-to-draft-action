@@ -39013,13 +39013,11 @@ ${pendingInterceptorsFormatter.format(pending)}
           headSha,
         );
 
+        // Get running workflow runs
+        const runningWorkflowRuns = getRunningWorkflowRuns(workflowRuns, runId);
+
         // If there is any running workflow run, convert the pull request to draft
-        // to reduce unnecessary API calls.
-        if (
-          workflowRuns.some(
-            (run) => run.status !== "completed" && run.id !== runId,
-          )
-        ) {
+        if (runningWorkflowRuns.length > 0) {
           await convertPrToDraft(token, owner, repo, prNumber);
           throw new Error("Any workflow run is not completed");
         }
@@ -39057,6 +39055,12 @@ ${pendingInterceptorsFormatter.format(pending)}
           error.message,
         );
       }
+    }
+
+    function getRunningWorkflowRuns(workflowRuns, currentRunId) {
+      return workflowRuns.filter(
+        (run) => run.status !== "completed" && run.id !== currentRunId,
+      );
     }
 
     async function fetchWorkflowRuns(token, owner, repo, headSha) {
