@@ -75,7 +75,16 @@ async function run() {
     const workflowRuns = await fetchWorkflowRuns(token, owner, repo, headSha);
 
     // Process workflow runs to determine if the PR should be converted to draft
-    if (await shouldConvertPrToDraft(workflowRuns, runId, headSha, token, owner, repo)) {
+    if (
+      await shouldConvertPrToDraft(
+        workflowRuns,
+        runId,
+        headSha,
+        token,
+        owner,
+        repo,
+      )
+    ) {
       await convertPrToDraft(token, owner, repo, prNumber);
       if (leaveComment === "1") {
         await leaveCommentIfDraft(token, owner, repo, prNumber, commentBody);
@@ -89,7 +98,14 @@ async function run() {
   }
 }
 
-async function shouldConvertPrToDraft(workflowRuns, currentRunId, headSha, token, owner, repo) {
+async function shouldConvertPrToDraft(
+  workflowRuns,
+  currentRunId,
+  headSha,
+  token,
+  owner,
+  repo,
+) {
   // Get running workflow runs
   const runningWorkflowRuns = workflowRuns.filter(
     (run) => run.status !== "completed" && run.id !== currentRunId,
@@ -107,7 +123,9 @@ async function shouldConvertPrToDraft(workflowRuns, currentRunId, headSha, token
   const filteredJobs = jobs.filter((job) => job.head_sha !== headSha);
 
   // Convert the pull request to draft if any workflows failed or are still running
-  return filteredJobs.some((job) => job.conclusion !== "success" || job.conclusion === null);
+  return filteredJobs.some(
+    (job) => job.conclusion !== "success" || job.conclusion === null,
+  );
 }
 
 async function fetchWorkflowRuns(token, owner, repo, headSha) {
