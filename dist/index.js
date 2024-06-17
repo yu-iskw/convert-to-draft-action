@@ -39063,6 +39063,18 @@ ${pendingInterceptorsFormatter.format(pending)}
         return true;
       }
 
+      // If all other workflows are successfully completed, return false immediately
+      const allCompleted = workflowRuns.every(
+        (run) => run.status === "completed" && run.conclusion === "success",
+      );
+
+      if (allCompleted) {
+        (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
+          "All other workflows are successfully completed.",
+        );
+        return false;
+      }
+
       // Fetch workflow jobs for the remaining workflow runs
       const jobs = await fetchWorkflowJobs(token, owner, repo, workflowRuns);
       // Filter out the current workflow run using the head SHA
