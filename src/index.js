@@ -86,6 +86,7 @@ async function run() {
     if (runningWorkflowRuns.length > 0) {
       info("Any workflow run is not completed");
       await convertPrToDraft(token, owner, repo, prNumber);
+      return;
     }
 
     // Only if there is any failed workflow run, then check if their workflows jobs are truly failed
