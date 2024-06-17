@@ -15,6 +15,12 @@
 import { getInput, info, setFailed } from "@actions/core";
 import { context, getOctokit } from "@actions/github";
 
+/**
+ * References:
+ * - https://docs.github.com/en/rest/actions/workflow-runs?apiVersion=2022-11-28#list-workflow-runs-for-a-repository
+ * - https://docs.github.com/en/rest/actions/workflow-jobs?apiVersion=2022-11-28#get-a-job-for-a-workflow-run
+ */
+
 async function run() {
   try {
     // Sleep 5 seconds to make sure other workflows are triggered
@@ -24,18 +30,13 @@ async function run() {
     const leaveComment = getInput("leave_comment");
     const commentBody = getInput("comment_body");
 
-    // Extract pull request number from the context payload
-    const { number: prNumber } = context.payload.pull_request || {};
-    // Extract repository owner and name from the context
+    // Extract necessary information from the context
+    const prNumber = context.payload.pull_request?.number;
     const { owner, repo } = context.repo;
-    // Extract job ID from the context
     const jobId = context.job;
-    // Extract run ID from the context
     const runId = context.runId;
-    // Extract workflow name from the context
     const workflow = context.workflow;
-    // Get the head SHA from the context
-    const headSha = context.payload.pull_request.head?.sha;
+    const headSha = context.payload.pull_request?.head?.sha;
 
     // Log context information for debugging
     info(`Context: ${JSON.stringify(context, null, 2)}`);
@@ -73,16 +74,18 @@ async function run() {
     // Fetch workflow runs associated with the pull request
     const workflowRuns = await fetchWorkflowRuns(token, owner, repo, headSha);
 
-    // Fetch workflow jobs for the remaining workflow runs
-    const jobs = await fetchWorkflowJobs(token, owner, repo, workflowRuns);
-
-    // Filter out the current workflow jobs using the run ID
-    const filteredJobs = jobs.filter((job) => job.run_id !== runId);
-
-    // Convert the pull request to draft if any workflows failed or are still running
-    if (hasFailedOrRunningJobs(filteredJobs)) {
+    // Process workflow runs to determine if the PR should be converted to draft
+    if (
+      await shouldConvertPrToDraft(
+        workflowRuns,
+        runId,
+        headSha,
+        token,
+        owner,
+        repo,
+      )
+    ) {
       await convertPrToDraft(token, owner, repo, prNumber);
-      // Leave a comment if the pull request is converted to draft and leave_comment is true
       if (leaveComment === "1") {
         await leaveCommentIfDraft(token, owner, repo, prNumber, commentBody);
       }
@@ -95,11 +98,37 @@ async function run() {
   }
 }
 
+async function shouldConvertPrToDraft(
+  workflowRuns,
+  currentRunId,
+  headSha,
+  token,
+  owner,
+  repo,
+) {
+  // Get running workflow runs
+  const runningWorkflowRuns = workflowRuns.filter(
+    (run) => run.status !== "completed" && run.id !== currentRunId,
+  );
+
+  // If there is any running workflow run, convert the pull request to draft
+  if (runningWorkflowRuns.length > 0) {
+    info("Any workflow run is not completed");
+    return true;
+  }
+
+  // Fetch workflow jobs for the remaining workflow runs
+  const jobs = await fetchWorkflowJobs(token, owner, repo, workflowRuns);
+  // Filter out the current workflow run using the head SHA
+  const filteredJobs = jobs.filter((job) => job.head_sha !== headSha);
+
+  // Convert the pull request to draft if any workflows failed or are still running
+  return filteredJobs.some(
+    (job) => job.conclusion !== "success" || job.conclusion === null,
+  );
+}
+
 async function fetchWorkflowRuns(token, owner, repo, headSha) {
-  /**
-   * NOTE: We can't determine if a workflow run is a part of a skipped workflow job.
-   *       So, we need to fetch workflow jobs by workflow runs and check if the job is skipped.
-   */
   const response = await fetch(
     `https://api.github.com/repos/${owner}/${repo}/actions/runs?head_sha=${headSha}`,
     {
@@ -159,16 +188,6 @@ async function fetchWorkflowJobs(token, owner, repo, workflowRuns) {
   info(`Total jobs fetched: ${jobs.length}`);
   info(`Jobs details: ${JSON.stringify(jobs, null, 2)}`);
   return jobs;
-}
-
-function hasFailedOrRunningJobs(jobs) {
-  const failedOrRunningJobs = jobs.filter(
-    (job) => job.conclusion !== "success" || job.conclusion === null,
-  );
-  info(
-    `Failed or running jobs: ${JSON.stringify(failedOrRunningJobs, null, 2)}`,
-  );
-  return failedOrRunningJobs.length > 0;
 }
 
 async function convertPrToDraft(token, owner, repo, prNumber) {

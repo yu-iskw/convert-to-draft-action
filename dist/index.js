@@ -38916,6 +38916,12 @@ ${pendingInterceptorsFormatter.format(pending)}
     // See the License for the specific language governing permissions and
     // limitations under the License.
 
+    /**
+     * References:
+     * - https://docs.github.com/en/rest/actions/workflow-runs?apiVersion=2022-11-28#list-workflow-runs-for-a-repository
+     * - https://docs.github.com/en/rest/actions/workflow-jobs?apiVersion=2022-11-28#get-a-job-for-a-workflow-run
+     */
+
     async function run() {
       try {
         // Sleep 5 seconds to make sure other workflows are triggered
@@ -38929,22 +38935,17 @@ ${pendingInterceptorsFormatter.format(pending)}
         const commentBody = (0,
         _actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput)("comment_body");
 
-        // Extract pull request number from the context payload
-        const { number: prNumber } =
+        // Extract necessary information from the context
+        const prNumber =
           _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.payload
-            .pull_request || {};
-        // Extract repository owner and name from the context
+            .pull_request.number;
         const { owner, repo } =
           _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.repo;
-        // Extract job ID from the context
         const jobId = _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.job;
-        // Extract run ID from the context
         const runId =
           _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.runId;
-        // Extract workflow name from the context
         const workflow =
           _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.workflow;
-        // Get the head SHA from the context
         const headSha =
           _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.payload
             .pull_request.head.sha;
@@ -39007,16 +39008,18 @@ ${pendingInterceptorsFormatter.format(pending)}
           headSha,
         );
 
-        // Fetch workflow jobs for the remaining workflow runs
-        const jobs = await fetchWorkflowJobs(token, owner, repo, workflowRuns);
-
-        // Filter out the current workflow jobs using the run ID
-        const filteredJobs = jobs.filter((job) => job.run_id !== runId);
-
-        // Convert the pull request to draft if any workflows failed or are still running
-        if (hasFailedOrRunningJobs(filteredJobs)) {
+        // Process workflow runs to determine if the PR should be converted to draft
+        if (
+          await shouldConvertPrToDraft(
+            workflowRuns,
+            runId,
+            headSha,
+            token,
+            owner,
+            repo,
+          )
+        ) {
           await convertPrToDraft(token, owner, repo, prNumber);
-          // Leave a comment if the pull request is converted to draft and leave_comment is true
           if (leaveComment === "1") {
             await leaveCommentIfDraft(
               token,
@@ -39039,11 +39042,39 @@ ${pendingInterceptorsFormatter.format(pending)}
       }
     }
 
+    async function shouldConvertPrToDraft(
+      workflowRuns,
+      currentRunId,
+      headSha,
+      token,
+      owner,
+      repo,
+    ) {
+      // Get running workflow runs
+      const runningWorkflowRuns = workflowRuns.filter(
+        (run) => run.status !== "completed" && run.id !== currentRunId,
+      );
+
+      // If there is any running workflow run, convert the pull request to draft
+      if (runningWorkflowRuns.length > 0) {
+        (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
+          "Any workflow run is not completed",
+        );
+        return true;
+      }
+
+      // Fetch workflow jobs for the remaining workflow runs
+      const jobs = await fetchWorkflowJobs(token, owner, repo, workflowRuns);
+      // Filter out the current workflow run using the head SHA
+      const filteredJobs = jobs.filter((job) => job.head_sha !== headSha);
+
+      // Convert the pull request to draft if any workflows failed or are still running
+      return filteredJobs.some(
+        (job) => job.conclusion !== "success" || job.conclusion === null,
+      );
+    }
+
     async function fetchWorkflowRuns(token, owner, repo, headSha) {
-      /**
-       * NOTE: We can't determine if a workflow run is a part of a skipped workflow job.
-       *       So, we need to fetch workflow jobs by workflow runs and check if the job is skipped.
-       */
       const response = await fetch(
         `https://api.github.com/repos/${owner}/${repo}/actions/runs?head_sha=${headSha}`,
         {
@@ -39121,16 +39152,6 @@ ${pendingInterceptorsFormatter.format(pending)}
         `Jobs details: ${JSON.stringify(jobs, null, 2)}`,
       );
       return jobs;
-    }
-
-    function hasFailedOrRunningJobs(jobs) {
-      const failedOrRunningJobs = jobs.filter(
-        (job) => job.conclusion !== "success" || job.conclusion === null,
-      );
-      (0, _actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(
-        `Failed or running jobs: ${JSON.stringify(failedOrRunningJobs, null, 2)}`,
-      );
-      return failedOrRunningJobs.length > 0;
     }
 
     async function convertPrToDraft(token, owner, repo, prNumber) {
