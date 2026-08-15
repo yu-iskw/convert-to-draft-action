@@ -24,11 +24,12 @@ permissions: read-all
 
 jobs:
   trunk_check:
+    if: ${{ github.event.pull_request.draft == false }}
     name: Trunk Check Runner
     runs-on: ubuntu-latest
     permissions:
-      checks: write # For trunk to post annotations
-      contents: read # For repo checkout
+      checks: write
+      contents: read
 
     steps:
       - name: Checkout
